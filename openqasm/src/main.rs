@@ -1,8 +1,5 @@
-mod rule;
-mod symbol_analyzer;
-mod lexer;
-use rule::{Rule, RuleCondition, RuleState, RuleStateTransition};
-use lexer::Lexer;
+use compiler::rule::{Rule, RuleCondition, RuleState, RuleStateTransition};
+use compiler::lexer::Lexer;
 
 #[derive(Clone, Copy, Debug)]
 enum Token {
