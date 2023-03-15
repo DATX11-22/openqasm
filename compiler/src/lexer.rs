@@ -1,5 +1,8 @@
-use crate::rule::{Rule, RuleCondition, RuleStateTransition, ClassT};
-use crate::symbol_analyzer::SymbolAnalyzer;
+pub mod rule;
+mod symbol_analyzer;
+
+use rule::{Rule, RuleCondition, RuleStateTransition, TokenT};
+use symbol_analyzer::SymbolAnalyzer;
 
 pub type Lexer<Token> = SymbolAnalyzer<char, Token>;
 
@@ -16,13 +19,13 @@ impl RuleStateTransition<char> {
     }
 }
 
-impl<Class: ClassT> Rule<char, Class> {
-    pub fn equal_str(class: Option<Class>, match_str: &str) -> Rule<char, Class> {
-        Rule::equal(class, match_str.bytes().map(|b| b as char).collect())
+impl<Token: TokenT> Rule<char, Token> {
+    pub fn equal_str(token: Option<Token>, match_str: &str) -> Rule<char, Token> {
+        Rule::equal(token, match_str.bytes().map(|b| b as char).collect())
     }
 
-    pub fn any_str(class: Option<Class>, char_set: &str) -> Rule<char, Class> {
-        Rule::any(class, char_set.bytes().map(|b| b as char).collect())
+    pub fn any_str(token: Option<Token>, char_set: &str) -> Rule<char, Token> {
+        Rule::any(token, char_set.bytes().map(|b| b as char).collect())
     }
 
     pub fn add_state_simple_str(

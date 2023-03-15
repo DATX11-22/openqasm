@@ -1,24 +1,24 @@
-use crate::rule::{Rule, SymbolT, ClassT};
+use super::rule::{Rule, SymbolT, TokenT};
 
-struct RuleMatch<'a, Symbol, Class> {
-    rule: &'a Rule<Symbol, Class>,
+struct RuleMatch<'a, Symbol, Token> {
+    rule: &'a Rule<Symbol, Token>,
     state_id: usize,
 }
 
-impl<'a, Symbol: SymbolT, Class: ClassT> RuleMatch<'a, Symbol, Class> {
-    pub fn new(rule: &'a Rule<Symbol, Class>) -> Self {
+impl<'a, Symbol: SymbolT, Token: TokenT> RuleMatch<'a, Symbol, Token> {
+    pub fn new(rule: &'a Rule<Symbol, Token>) -> Self {
         Self { rule, state_id: 0 }
     }
 
-    pub fn class(&self) -> Option<Class> {
-        self.rule.class()
+    pub fn token(&self) -> Option<Token> {
+        self.rule.token()
     }
 
     pub fn done(&self) -> bool {
         self.rule.done(self.state_id)
     }
 
-    pub fn next(&self, c: Symbol) -> Option<RuleMatch<'a, Symbol, Class>> {
+    pub fn next(&self, c: Symbol) -> Option<RuleMatch<'a, Symbol, Token>> {
         if let Some(next_state) = self.rule.next_state(self.state_id, c) {
             return Some(RuleMatch {
                 rule: self.rule,
@@ -30,43 +30,43 @@ impl<'a, Symbol: SymbolT, Class: ClassT> RuleMatch<'a, Symbol, Class> {
     }
 }
 
-pub struct SymbolAnalyzer<Symbol, Class> {
-    rules: Vec<Rule<Symbol, Class>>,
+pub struct SymbolAnalyzer<Symbol, Token> {
+    rules: Vec<Rule<Symbol, Token>>,
 }
 
-impl<Symbol: SymbolT, Class: ClassT> SymbolAnalyzer<Symbol, Class> {
+impl<Symbol: SymbolT, Token: TokenT> SymbolAnalyzer<Symbol, Token> {
     pub fn new() -> Self {
         Self { rules: Vec::new() }
     }
 
-    pub fn add_rule(&mut self, rule: Rule<Symbol, Class>) {
+    pub fn add_rule(&mut self, rule: Rule<Symbol, Token>) {
         // TODO: Validate rule
         self.rules.push(rule);
     }
 
-    pub fn parse(&self, symbols: Vec<Symbol>) -> Vec<Class> {
-        let mut classifications = Vec::new();
+    pub fn parse(&self, symbols: Vec<Symbol>) -> Vec<Token> {
+        let mut tokens = Vec::new();
 
         let mut i = 0;
         loop {
             let mut done_match = None;
-            let mut classification_matches: Vec<_> =
+            let mut token_matches: Vec<_> =
                 self.rules.iter().map(|r| RuleMatch::new(r)).collect();
 
             loop {
                 // Store the first complete match
-                for classification_match in classification_matches.iter() {
-                    if classification_match.done() {
-                        done_match = Some((classification_match.class(), i));
+                for token_match in token_matches.iter() {
+                    if token_match.done() {
+                        done_match = Some((token_match.token(), i));
                     }
                 }
 
-                if i >= symbols.len() || classification_matches.is_empty() {
+                if i >= symbols.len() || token_matches.is_empty() {
                     break;
                 }
 
                 // Filter out matches which no longer match after reading the character at index i
-                classification_matches = classification_matches
+                token_matches = token_matches
                     .iter()
                     .filter_map(|cm| cm.next(symbols[i]))
                     .collect();
@@ -74,9 +74,9 @@ impl<Symbol: SymbolT, Class: ClassT> SymbolAnalyzer<Symbol, Class> {
                 i += 1;
             }
 
-            if let Some((classification, end_index)) = done_match {
-                if let Some(classification) = classification {
-                    classifications.push(classification);
+            if let Some((token, end_index)) = done_match {
+                if let Some(token) = token {
+                    tokens.push(token);
                 }
                 i = end_index;
             } else {
@@ -89,7 +89,7 @@ impl<Symbol: SymbolT, Class: ClassT> SymbolAnalyzer<Symbol, Class> {
             }
         }
 
-        classifications
+        tokens
     }
 }
 

@@ -1,7 +1,7 @@
 pub trait SymbolT: Copy + PartialEq  {}
 impl<Symbol: Copy + PartialEq> SymbolT for Symbol {}
-pub trait ClassT: Copy {}
-impl<Class: Copy> ClassT for Class {}
+pub trait TokenT: Copy {}
+impl<Token: Copy> TokenT for Token {}
 
 pub enum RuleCondition<T> {
     OneOf(T),
@@ -33,20 +33,20 @@ pub struct RuleState<Symbol> {
     pub done: bool,
 }
 
-pub struct Rule<Symbol, Class> {
-    class: Option<Class>,
+pub struct Rule<Symbol, Token> {
+    token: Option<Token>,
     states: Vec<RuleState<Symbol>>,
 }
 
-impl<Symbol: SymbolT, Class: ClassT> Rule<Symbol, Class> {
-    pub fn new(class: Option<Class>) -> Rule<Symbol, Class> {
+impl<Symbol: SymbolT, Token: TokenT> Rule<Symbol, Token> {
+    pub fn new(token: Option<Token>) -> Rule<Symbol, Token> {
         Self {
-            class,
+            token,
             states: Vec::new(),
         }
     }
 
-    pub fn equal(class: Option<Class>, match_vec: Vec<Symbol>) -> Rule<Symbol, Class> {
+    pub fn equal(token: Option<Token>, match_vec: Vec<Symbol>) -> Rule<Symbol, Token> {
         let mut states: Vec<_> = match_vec
             .iter()
             .enumerate()
@@ -64,10 +64,10 @@ impl<Symbol: SymbolT, Class: ClassT> Rule<Symbol, Class> {
             done: true,
         });
 
-        Self { class, states }
+        Self { token, states }
     }
 
-    pub fn any(class: Option<Class>, symbol_set: Vec<Symbol>) -> Rule<Symbol, Class> {
+    pub fn any(token: Option<Token>, symbol_set: Vec<Symbol>) -> Rule<Symbol, Token> {
         let states = vec![
             RuleState {
                 transitions: vec![RuleStateTransition::new(
@@ -85,7 +85,7 @@ impl<Symbol: SymbolT, Class: ClassT> Rule<Symbol, Class> {
             },
         ];
 
-        Self { class, states }
+        Self { token, states }
     }
 
     pub fn add_state(&mut self, rule_state: RuleState<Symbol>) {
@@ -122,8 +122,8 @@ impl<Symbol: SymbolT, Class: ClassT> Rule<Symbol, Class> {
         self.states[state_id].done
     }
 
-    pub fn class(&self) -> Option<Class> {
-        self.class
+    pub fn token(&self) -> Option<Token> {
+        self.token
     }
 }
 

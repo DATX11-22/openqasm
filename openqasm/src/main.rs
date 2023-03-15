@@ -1,4 +1,4 @@
-use compiler::rule::{Rule, RuleCondition, RuleState, RuleStateTransition};
+use compiler::lexer::rule::{Rule, RuleCondition, RuleState, RuleStateTransition};
 use compiler::lexer::Lexer;
 
 #[derive(Clone, Copy, Debug)]
@@ -30,7 +30,6 @@ enum Token {
     Str,
     Identifier,
 }
-
 
 fn main() {
     let file_str = "
