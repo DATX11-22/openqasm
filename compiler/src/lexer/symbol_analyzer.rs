@@ -30,21 +30,21 @@ impl<'a, Symbol: SymbolT, Token: TokenT> RuleMatch<'a, Symbol, Token> {
     }
 }
 
-pub struct SymbolAnalyzer<Symbol, Token> {
-    rules: Vec<Rule<Symbol, Token>>,
+pub struct SymbolAnalyzer<Symbol, TokenType> {
+    rules: Vec<Rule<Symbol, TokenType>>,
 }
 
-impl<Symbol: SymbolT, Token: TokenT> SymbolAnalyzer<Symbol, Token> {
+impl<Symbol: SymbolT, TokenType: TokenT> SymbolAnalyzer<Symbol, TokenType> {
     pub fn new() -> Self {
         Self { rules: Vec::new() }
     }
 
-    pub fn add_rule(&mut self, rule: Rule<Symbol, Token>) {
+    pub fn add_rule(&mut self, rule: Rule<Symbol, TokenType>) {
         // TODO: Validate rule
         self.rules.push(rule);
     }
 
-    pub fn parse(&self, symbols: Vec<Symbol>) -> Vec<Token> {
+    pub fn parse(&self, symbols: Vec<Symbol>) -> Vec<(TokenType, Vec<Symbol>)> {
         let mut tokens = Vec::new();
 
         let mut i = 0;
@@ -53,6 +53,7 @@ impl<Symbol: SymbolT, Token: TokenT> SymbolAnalyzer<Symbol, Token> {
             let mut token_matches: Vec<_> =
                 self.rules.iter().map(|r| RuleMatch::new(r)).collect();
 
+            let match_start = i;
             loop {
                 // Store the first complete match
                 for token_match in token_matches.iter() {
@@ -74,11 +75,11 @@ impl<Symbol: SymbolT, Token: TokenT> SymbolAnalyzer<Symbol, Token> {
                 i += 1;
             }
 
-            if let Some((token, end_index)) = done_match {
+            if let Some((token, match_end)) = done_match {
                 if let Some(token) = token {
-                    tokens.push(token);
+                    tokens.push((token, symbols[match_start..match_end].to_vec()));
                 }
-                i = end_index;
+                i = match_end;
             } else {
                 println!("ERROR!!!!!!!!!!!!!!!!");
                 break;
