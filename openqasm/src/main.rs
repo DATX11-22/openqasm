@@ -1,7 +1,9 @@
+use std::slice::Iter;
+
 use compiler::lexer::rule::{Rule, RuleCondition, RuleState, RuleStateTransition};
 use compiler::lexer::Lexer;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Token {
     OPENQASM,
     Include,
@@ -31,12 +33,110 @@ enum Token {
     Identifier,
 }
 
+trait ASTNodeSimple<Token> {
+    fn parse_impl(tokens: &mut Iter<Token>) -> Option<Self>
+    where
+        Self: Sized;
+}
+
+impl<Token, T: ASTNodeSimple<Token>> ASTNode<Token> for T {
+    fn parse_impls() -> Vec<fn(&mut Iter<Token>) -> Option<Self>>
+    where
+        Self: Sized,
+    {
+        vec![|tokens| Self::parse_impl(tokens)]
+    }
+}
+
+trait ASTNode<Token> {
+    fn parse(tokens: &mut Iter<Token>) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        for parse_impl in Self::parse_impls() {
+            let mut tokens_cpy = tokens.clone();
+
+            let res = parse_impl(&mut tokens_cpy);
+
+            if res.is_some() {
+                *tokens = tokens_cpy;
+                return res;
+            }
+        }
+
+        None
+    }
+
+    fn parse_impls() -> Vec<fn(&mut Iter<Token>) -> Option<Self>>
+    where
+        Self: Sized;
+}
+
+impl Token {
+    fn parse(tokens: &mut Iter<Self>, token: Self) -> Option<Self> {
+        if tokens.next() == Some(&token) {
+            return Some(token);
+        }
+        None
+    }
+}
+
+struct MainProgram(Number, Program);
+
+impl ASTNodeSimple<Token> for MainProgram {
+    fn parse_impl(tokens: &mut Iter<Token>) -> Option<Self> {
+        Token::parse(tokens, Token::OPENQASM)?;
+        let num = Number::parse(tokens)?;
+        Token::parse(tokens, Token::Semicolon)?;
+        let program = Program::parse(tokens)?;
+
+        Some(MainProgram(num, program))
+    }
+}
+
+enum Program {
+    Sigle(Statement),
+    Multiple(Statement, Box<Program>),
+}
+
+impl ASTNode<Token> for Program {
+    fn parse_impls() -> Vec<fn(&mut Iter<Token>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                let statement = Statement::parse(tokens)?;
+                Some(Program::Sigle(statement))
+            },
+            |tokens| {
+                let statement = Statement::parse(tokens)?;
+                Some(Program::Sigle(statement))
+            },
+        ]
+    }
+}
+
+enum Statement {
+    Test,
+}
+
+impl ASTNodeSimple<Token> for Statement {
+    fn parse_impl(tokens: &mut Iter<Token>) -> Option<Self> {
+        Token::parse(tokens, Token::U)?;
+        Some(Statement::Test)
+    }
+}
+
+struct Number;
+
+impl ASTNodeSimple<Token> for Number {
+    fn parse_impl(tokens: &mut Iter<Token>) -> Option<Self> {
+        Token::parse(tokens, Token::Number)?;
+        Some(Number)
+    }
+}
+
 fn main() {
     let file_str = "
-        hello hello there02334
-        OPENQASM
-        123.12123215 123there
-        \"Hello there 12398u1289dfsd.f.sd\"12->3
+        OPENQASM 2.0; U
     ";
 
     let mut lexer = Lexer::new();
@@ -132,4 +232,9 @@ fn main() {
     for token in tokens.iter() {
         println!("Token: {:?}", token);
     }
+    
+    let t_vec: Vec<Token> = tokens.iter().map(|(a, _)| *a).collect();
+
+    let a = MainProgram::parse(&mut t_vec.iter());
+    println!("{:?}", a.is_some());
 }
