@@ -33,14 +33,16 @@ enum Token {
     Identifier,
 }
 
-trait ASTNodeSimple<Token> {
-    fn parse_impl(tokens: &mut Iter<Token>) -> Option<Self>
+type TokenMatch = (Token, String);
+
+trait ASTNodeSimple<TokenMatch> {
+    fn parse_impl(tokens: &mut Iter<TokenMatch>) -> Option<Self>
     where
         Self: Sized;
 }
 
-impl<Token, T: ASTNodeSimple<Token>> ASTNode<Token> for T {
-    fn parse_impls() -> Vec<fn(&mut Iter<Token>) -> Option<Self>>
+impl<TokenMatch, T: ASTNodeSimple<TokenMatch>> ASTNode<TokenMatch> for T {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>>
     where
         Self: Sized,
     {
@@ -48,8 +50,8 @@ impl<Token, T: ASTNodeSimple<Token>> ASTNode<Token> for T {
     }
 }
 
-trait ASTNode<Token> {
-    fn parse(tokens: &mut Iter<Token>) -> Option<Self>
+trait ASTNode<TokenMatch> {
+    fn parse(tokens: &mut Iter<TokenMatch>) -> Option<Self>
     where
         Self: Sized,
     {
@@ -67,15 +69,17 @@ trait ASTNode<Token> {
         None
     }
 
-    fn parse_impls() -> Vec<fn(&mut Iter<Token>) -> Option<Self>>
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>>
     where
         Self: Sized;
 }
 
 impl Token {
-    fn parse(tokens: &mut Iter<Self>, token: Self) -> Option<Self> {
-        if tokens.next() == Some(&token) {
-            return Some(token);
+    fn parse(tokens: &mut Iter<TokenMatch>, token: Token) -> Option<Token> {
+        if let Some(t) = tokens.next() {
+            if t.0 == token {
+                return Some(t.0);
+            }
         }
         None
     }
@@ -83,8 +87,8 @@ impl Token {
 
 struct MainProgram(Number, Program);
 
-impl ASTNodeSimple<Token> for MainProgram {
-    fn parse_impl(tokens: &mut Iter<Token>) -> Option<Self> {
+impl ASTNodeSimple<TokenMatch> for MainProgram {
+    fn parse_impl(tokens: &mut Iter<TokenMatch>) -> Option<Self> {
         Token::parse(tokens, Token::OPENQASM)?;
         let num = Number::parse(tokens)?;
         Token::parse(tokens, Token::Semicolon)?;
@@ -99,8 +103,8 @@ enum Program {
     Sigle(Statement),
 }
 
-impl ASTNode<Token> for Program {
-    fn parse_impls() -> Vec<fn(&mut Iter<Token>) -> Option<Self>> {
+impl ASTNode<TokenMatch> for Program {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
         vec![
             |tokens| {
                 let statement = Statement::parse(tokens)?;
@@ -125,14 +129,12 @@ enum Statement {
     // Barrier
 }
 
-impl ASTNode<Token> for Statement {
-    fn parse_impls() -> Vec<fn(&mut Iter<Token>) -> Option<Self>> {
-        vec![
-            |tokens| {
-                let decl = Decl::parse(tokens)?;
-                Some(Statement::Decl(decl))
-            }
-        ]
+impl ASTNode<TokenMatch> for Statement {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+        vec![|tokens| {
+            let decl = Decl::parse(tokens)?;
+            Some(Statement::Decl(decl))
+        }]
     }
 }
 
@@ -141,8 +143,8 @@ enum Decl {
     CReg(Identifier, Integer),
 }
 
-impl ASTNode<Token> for Decl {
-    fn parse_impls() -> Vec<fn(&mut Iter<Token>) -> Option<Self>> {
+impl ASTNode<TokenMatch> for Decl {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
         vec![
             |tokens| {
                 Token::parse(tokens, Token::QReg)?;
@@ -163,35 +165,152 @@ impl ASTNode<Token> for Decl {
                 Token::parse(tokens, Token::Semicolon)?;
 
                 Some(Decl::CReg(id, size))
-            }
+            },
         ]
     }
 }
 
-struct Identifier;
+struct Identifier(String);
 
-impl ASTNodeSimple<Token> for Identifier {
-    fn parse_impl(tokens: &mut Iter<Token>) -> Option<Self> {
-        Token::parse(tokens, Token::Identifier)?;
-        Some(Identifier)
+impl ASTNodeSimple<TokenMatch> for Identifier {
+    fn parse_impl(tokens: &mut Iter<TokenMatch>) -> Option<Self> {
+        if let Some((Token::Identifier, s)) = tokens.next() {
+            return Some(Identifier(s.clone()));
+        }
+        None
     }
 }
 
-struct Number;
+struct Number(String);
 
-impl ASTNodeSimple<Token> for Number {
-    fn parse_impl(tokens: &mut Iter<Token>) -> Option<Self> {
-        Token::parse(tokens, Token::Number)?;
-        Some(Number)
+impl ASTNodeSimple<TokenMatch> for Number {
+    fn parse_impl(tokens: &mut Iter<TokenMatch>) -> Option<Self> {
+        if let Some((Token::Number, s)) = tokens.next() {
+            return Some(Number(s.clone()));
+        }
+        None
     }
 }
 
-struct Integer;
+struct Integer(u32);
 
-impl ASTNodeSimple<Token> for Integer {
-    fn parse_impl(tokens: &mut Iter<Token>) -> Option<Self> {
-        Token::parse(tokens, Token::Int)?;
-        Some(Integer)
+impl ASTNodeSimple<TokenMatch> for Integer {
+    fn parse_impl(tokens: &mut Iter<TokenMatch>) -> Option<Self> {
+        if let Some((Token::Int, s)) = tokens.next() {
+            return Some(Integer(s.parse().ok()?));
+        }
+        None
+    }
+}
+
+trait ASTDebug {
+    fn print(&self) {
+        self.print_impl(0);
+    }
+
+    fn print_impl(&self, depth: u32) {
+        for _ in 0..depth * 4 {
+            print!(" ");
+        }
+        
+        println!("{}", self.name());
+        for child in self.chidren().iter() {
+            child.print_impl(depth + 1);
+        }
+    }
+
+    fn chidren(&self) -> Vec<&dyn ASTDebug>;
+    fn name(&self) -> String;
+}
+
+impl ASTDebug for MainProgram {
+    fn chidren(&self) -> Vec<&dyn ASTDebug> {
+        vec![&self.0, &self.1]
+    }
+
+    fn name(&self) -> String {
+        "Main Program".to_string()
+    }
+}
+
+impl ASTDebug for Program {
+    fn chidren(&self) -> Vec<&dyn ASTDebug> {
+        match self {
+            Program::Multiple(statement, program) => vec![statement, program.as_ref()],
+            Program::Sigle(statement) => vec![statement],
+        }
+    }
+
+    fn name(&self) -> String {
+        "Program".to_string()
+    }
+}
+
+impl ASTDebug for Statement {
+    fn chidren(&self) -> Vec<&dyn ASTDebug> {
+        match self {
+            Statement::Decl(decl) => vec![decl],
+            Statement::GateDecl => todo!(),
+            Statement::GateDeclEmpty => todo!(),
+            Statement::QOp => todo!(),
+            Statement::If => todo!(),
+        }
+    }
+
+    fn name(&self) -> String {
+        match self {
+            Statement::Decl(_) => "Decl".to_string(),
+            Statement::GateDecl => todo!(),
+            Statement::GateDeclEmpty => todo!(),
+            Statement::QOp => todo!(),
+            Statement::If => todo!(),
+        }
+    }
+}
+
+impl ASTDebug for Decl {
+    fn chidren(&self) -> Vec<&dyn ASTDebug> {
+        match self {
+            Decl::QReg(id, size) => vec![id, size],
+            Decl::CReg(id, size) => vec![id, size],
+        }
+    }
+
+    fn name(&self) -> String {
+        match self {
+            Decl::QReg(_, _) => "QReg".to_string(),
+            Decl::CReg(_, _) => "CReg".to_string(),
+        }
+    }
+}
+
+impl ASTDebug for Identifier {
+    fn chidren(&self) -> Vec<&dyn ASTDebug> {
+        vec![]
+    }
+
+    fn name(&self) -> String {
+        format!("Identifier: {}", self.0)
+    }
+}
+
+impl ASTDebug for Number {
+    fn chidren(&self) -> Vec<&dyn ASTDebug> {
+        vec![]
+    }
+
+    fn name(&self) -> String {
+        format!("Number: {}", self.0)
+    }
+}
+
+impl ASTDebug for Integer {
+    fn chidren(&self) -> Vec<&dyn ASTDebug> {
+        vec![]
+    }
+
+    fn name(&self) -> String {
+        format!("Integer: {}", self.0)
     }
 }
 
@@ -296,10 +415,16 @@ fn main() {
     for token in tokens.iter() {
         println!("Token: {:?}", token);
     }
-    
-    let t_vec: Vec<Token> = tokens.iter().map(|(a, _)| *a).collect();
+
+    let t_vec: Vec<TokenMatch> = tokens
+        .iter()
+        .map(|(a, s)| (*a, s.into_iter().collect::<String>()))
+        .collect();
 
     let mut iter = t_vec.iter();
     let a = MainProgram::parse(&mut iter);
-    println!("{:?}", a.is_some() && iter.next().is_none());
+    if let Some(a) = a {
+        a.print();
+    }
+    // println!("{:?}", a.is_some() && iter.next().is_none());
 }
