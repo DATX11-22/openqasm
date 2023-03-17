@@ -4,7 +4,7 @@ mod token;
 
 use ast::MainProgram;
 use compiler::ast::ast_debug::ASTDebug;
-use compiler::ast::ast_node::ASTNode;
+use compiler::ast::ast_node::{ASTNode, TokenIter};
 use compiler::lexer::Lexer;
 use token::TokenMatch;
 
@@ -27,7 +27,7 @@ fn main() {
         .map(|(a, s)| (*a, s.into_iter().collect::<String>()))
         .collect();
 
-    let mut iter = t_vec.iter();
+    let mut iter = TokenIter::create(&t_vec);
     let a = MainProgram::parse(&mut iter);
     if let Some(a) = a {
         a.print();

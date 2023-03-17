@@ -1,13 +1,43 @@
-use std::slice::Iter;
+#[derive(Copy, Clone)]
+pub struct TokenIter<'a, Token: Copy> {
+    tokens: &'a Vec<(Token, String)>,
+    i: usize,
+}
 
-pub trait ASTNodeSimple<TokenMatch> {
-    fn parse_impl(tokens: &mut Iter<TokenMatch>) -> Option<Self>
+impl<'a, Token: Copy> TokenIter<'a, Token> {
+    pub fn create(tokens: &'a Vec<(Token, String)>) -> Self {
+        TokenIter {
+            tokens,
+            i: 0,
+        }
+    }
+
+    pub fn distance(from: &Self, to: &Self) -> Option<i32> {
+        if from.tokens.as_ptr() == to.tokens.as_ptr() {
+            return Some(to.i as i32 - from.i as i32);
+        }
+        None
+    }
+}
+
+impl<'a, Token: Copy> Iterator for TokenIter<'a, Token> {
+    type Item = &'a(Token, String);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next_element = self.tokens.get(self.i);
+        self.i += 1;
+        next_element
+    }
+}
+
+pub trait ASTNodeSimple<Token: Copy> {
+    fn parse_impl(tokens: &mut TokenIter<Token>) -> Option<Self>
     where
         Self: Sized;
 }
 
-impl<TokenMatch, T: ASTNodeSimple<TokenMatch>> ASTNode<TokenMatch> for T {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>>
+impl<Token: Copy, T: ASTNodeSimple<Token>> ASTNode<Token> for T {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>>
     where
         Self: Sized,
     {
@@ -15,26 +45,32 @@ impl<TokenMatch, T: ASTNodeSimple<TokenMatch>> ASTNode<TokenMatch> for T {
     }
 }
 
-pub trait ASTNode<TokenMatch> {
-    fn parse(tokens: &mut Iter<TokenMatch>) -> Option<Self>
+pub trait ASTNode<Token: Copy> {
+    fn parse(tokens: &mut TokenIter<Token>) -> Option<Self>
     where
         Self: Sized,
     {
+        let mut res = (None, *tokens);
         for parse_impl in Self::parse_impls() {
-            let mut tokens_cpy = tokens.clone();
+            let mut tokens_cpy = *tokens;
 
-            let res = parse_impl(&mut tokens_cpy);
+            let current_res = parse_impl(&mut tokens_cpy);
 
-            if res.is_some() {
-                *tokens = tokens_cpy;
-                return res;
+            if current_res.is_some() {
+                let len = TokenIter::distance(&res.1, &tokens_cpy);
+                if let Some(len) = len {
+                    if len > 0 {
+                        res = (current_res, tokens_cpy);
+                    }
+                }
             }
         }
 
-        None
+        *tokens = res.1;
+        res.0
     }
 
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>>
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>>
     where
         Self: Sized;
 }

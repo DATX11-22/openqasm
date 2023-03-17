@@ -1,11 +1,10 @@
 pub mod ast_debug;
 
-use crate::token::{Token, TokenMatch};
-use compiler::ast::ast_node::{ASTNode, ASTNodeSimple};
-use std::slice::Iter;
+use crate::token::Token;
+use compiler::ast::ast_node::{ASTNode, ASTNodeSimple, TokenIter};
 
 impl Token {
-    fn parse(tokens: &mut Iter<TokenMatch>, token: Token) -> Option<Token> {
+    fn parse(tokens: &mut TokenIter<Token>, token: Token) -> Option<Token> {
         if let Some(t) = tokens.next() {
             if t.0 == token {
                 return Some(t.0);
@@ -17,8 +16,8 @@ impl Token {
 
 pub struct MainProgram(Number, Program);
 
-impl ASTNodeSimple<TokenMatch> for MainProgram {
-    fn parse_impl(tokens: &mut Iter<TokenMatch>) -> Option<Self> {
+impl ASTNodeSimple<Token> for MainProgram {
+    fn parse_impl(tokens: &mut TokenIter<Token>) -> Option<Self> {
         Token::parse(tokens, Token::OPENQASM)?;
         let num = Number::parse(tokens)?;
         Token::parse(tokens, Token::Semicolon)?;
@@ -33,8 +32,8 @@ pub enum Program {
     Single(Statement),
 }
 
-impl ASTNode<TokenMatch> for Program {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+impl ASTNode<Token> for Program {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         vec![
             |tokens| {
                 let statement = Statement::parse(tokens)?;
@@ -59,8 +58,8 @@ pub enum Statement {
     // Barrier
 }
 
-impl ASTNode<TokenMatch> for Statement {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+impl ASTNode<Token> for Statement {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         vec![
             |tokens| {
                 let decl = Decl::parse(tokens)?;
@@ -90,8 +89,8 @@ pub enum Decl {
     CReg(Identifier, Integer),
 }
 
-impl ASTNode<TokenMatch> for Decl {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+impl ASTNode<Token> for Decl {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         vec![
             |tokens| {
                 Token::parse(tokens, Token::QReg)?;
@@ -123,8 +122,8 @@ pub enum GateDecl {
     WithArgList(Identifier, IdList, IdList),
 }
 
-impl ASTNode<TokenMatch> for GateDecl {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+impl ASTNode<Token> for GateDecl {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         vec![
             |tokens| {
                 Token::parse(tokens, Token::Gate)?;
@@ -163,8 +162,8 @@ pub enum GopList {
     // GopList barrier
 }
 
-impl ASTNode<TokenMatch> for GopList {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+impl ASTNode<Token> for GopList {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         vec![
             |tokens| {
                 let uop = UOp::parse(tokens)?;
@@ -185,8 +184,8 @@ pub enum QOp {
     Reset(Argument),
 }
 
-impl ASTNode<TokenMatch> for QOp {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+impl ASTNode<Token> for QOp {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         vec![
             |tokens| {
                 let uop = UOp::parse(tokens)?;
@@ -218,8 +217,8 @@ pub enum UOp {
     WithArgList(Identifier, ExpList, AnyList),
 }
 
-impl ASTNode<TokenMatch> for UOp {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+impl ASTNode<Token> for UOp {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         vec![
             |tokens| {
                 Token::parse(tokens, Token::U)?;
@@ -270,8 +269,8 @@ pub enum AnyList {
     MixedList(MixedList),
 }
 
-impl ASTNode<TokenMatch> for AnyList {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+impl ASTNode<Token> for AnyList {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         vec![
             |tokens| {
                 let idlist = IdList::parse(tokens)?;
@@ -290,8 +289,8 @@ pub enum IdList {
     Id(Identifier),
 }
 
-impl ASTNode<TokenMatch> for IdList {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+impl ASTNode<Token> for IdList {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         vec![
             |tokens| {
                 let id = Identifier::parse(tokens)?;
@@ -314,8 +313,8 @@ pub enum MixedList {
     IndexedIdList(Identifier, Integer, IdList),
 }
 
-impl ASTNode<TokenMatch> for MixedList {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+impl ASTNode<Token> for MixedList {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         vec![
             |tokens| {
                 let id = Identifier::parse(tokens)?;
@@ -357,8 +356,8 @@ pub enum Argument {
     Indexed(Identifier, Integer),
 }
 
-impl ASTNode<TokenMatch> for Argument {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+impl ASTNode<Token> for Argument {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         vec![
             |tokens| {
                 let id = Identifier::parse(tokens)?;
@@ -380,8 +379,8 @@ pub enum ExpList {
     Exp(Exp),
 }
 
-impl ASTNode<TokenMatch> for ExpList {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+impl ASTNode<Token> for ExpList {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         vec![
             |tokens| {
                 let exp = Exp::parse(tokens)?;
@@ -402,8 +401,8 @@ pub enum Exp {
     // pi, id, +, -, *, /, -, ^, (), unaryop
 }
 
-impl ASTNode<TokenMatch> for Exp {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+impl ASTNode<Token> for Exp {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         vec![
             |tokens| {
                 let num = Number::parse(tokens)?;
@@ -419,16 +418,16 @@ impl ASTNode<TokenMatch> for Exp {
 
 pub enum UnaryOp {}
 
-impl ASTNode<TokenMatch> for UnaryOp {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+impl ASTNode<Token> for UnaryOp {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         todo!()
     }
 }
 
 pub struct Identifier(String);
 
-impl ASTNodeSimple<TokenMatch> for Identifier {
-    fn parse_impl(tokens: &mut Iter<TokenMatch>) -> Option<Self> {
+impl ASTNodeSimple<Token> for Identifier {
+    fn parse_impl(tokens: &mut TokenIter<Token>) -> Option<Self> {
         if let Some((Token::Identifier, s)) = tokens.next() {
             return Some(Identifier(s.clone()));
         }
@@ -438,8 +437,8 @@ impl ASTNodeSimple<TokenMatch> for Identifier {
 
 pub struct Number(String);
 
-impl ASTNodeSimple<TokenMatch> for Number {
-    fn parse_impl(tokens: &mut Iter<TokenMatch>) -> Option<Self> {
+impl ASTNodeSimple<Token> for Number {
+    fn parse_impl(tokens: &mut TokenIter<Token>) -> Option<Self> {
         if let Some((Token::Number, s)) = tokens.next() {
             return Some(Number(s.clone()));
         }
@@ -449,8 +448,8 @@ impl ASTNodeSimple<TokenMatch> for Number {
 
 pub struct Integer(u32);
 
-impl ASTNodeSimple<TokenMatch> for Integer {
-    fn parse_impl(tokens: &mut Iter<TokenMatch>) -> Option<Self> {
+impl ASTNodeSimple<Token> for Integer {
+    fn parse_impl(tokens: &mut TokenIter<Token>) -> Option<Self> {
         if let Some((Token::Int, s)) = tokens.next() {
             return Some(Integer(s.parse().ok()?));
         }
