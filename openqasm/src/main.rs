@@ -1,7 +1,8 @@
-use std::slice::Iter;
-
+use compiler::ast::ast_debug::ASTDebug;
+use compiler::ast::ast_node::{ASTNode, ASTNodeSimple};
 use compiler::lexer::rule::{Rule, RuleCondition, RuleState, RuleStateTransition};
 use compiler::lexer::Lexer;
+use std::slice::Iter;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Token {
@@ -34,45 +35,6 @@ enum Token {
 }
 
 type TokenMatch = (Token, String);
-
-trait ASTNodeSimple<TokenMatch> {
-    fn parse_impl(tokens: &mut Iter<TokenMatch>) -> Option<Self>
-    where
-        Self: Sized;
-}
-
-impl<TokenMatch, T: ASTNodeSimple<TokenMatch>> ASTNode<TokenMatch> for T {
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>>
-    where
-        Self: Sized,
-    {
-        vec![|tokens| Self::parse_impl(tokens)]
-    }
-}
-
-trait ASTNode<TokenMatch> {
-    fn parse(tokens: &mut Iter<TokenMatch>) -> Option<Self>
-    where
-        Self: Sized,
-    {
-        for parse_impl in Self::parse_impls() {
-            let mut tokens_cpy = tokens.clone();
-
-            let res = parse_impl(&mut tokens_cpy);
-
-            if res.is_some() {
-                *tokens = tokens_cpy;
-                return res;
-            }
-        }
-
-        None
-    }
-
-    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>>
-    where
-        Self: Sized;
-}
 
 impl Token {
     fn parse(tokens: &mut Iter<TokenMatch>, token: Token) -> Option<Token> {
@@ -201,26 +163,6 @@ impl ASTNodeSimple<TokenMatch> for Integer {
         }
         None
     }
-}
-
-trait ASTDebug {
-    fn print(&self) {
-        self.print_impl(0);
-    }
-
-    fn print_impl(&self, depth: u32) {
-        for _ in 0..depth * 4 {
-            print!(" ");
-        }
-        
-        println!("{}", self.name());
-        for child in self.chidren().iter() {
-            child.print_impl(depth + 1);
-        }
-    }
-
-    fn chidren(&self) -> Vec<&dyn ASTDebug>;
-    fn name(&self) -> String;
 }
 
 impl ASTDebug for MainProgram {
