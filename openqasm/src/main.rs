@@ -95,8 +95,8 @@ impl ASTNodeSimple<Token> for MainProgram {
 }
 
 enum Program {
-    Sigle(Statement),
     Multiple(Statement, Box<Program>),
+    Sigle(Statement),
 }
 
 impl ASTNode<Token> for Program {
@@ -104,7 +104,8 @@ impl ASTNode<Token> for Program {
         vec![
             |tokens| {
                 let statement = Statement::parse(tokens)?;
-                Some(Program::Sigle(statement))
+                let program = Box::new(Program::parse(tokens)?);
+                Some(Program::Multiple(statement, program))
             },
             |tokens| {
                 let statement = Statement::parse(tokens)?;
@@ -115,13 +116,64 @@ impl ASTNode<Token> for Program {
 }
 
 enum Statement {
-    Test,
+    Decl(Decl),
+    GateDecl,
+    GateDeclEmpty,
+    // Opaque
+    QOp,
+    If,
+    // Barrier
 }
 
-impl ASTNodeSimple<Token> for Statement {
+impl ASTNode<Token> for Statement {
+    fn parse_impls() -> Vec<fn(&mut Iter<Token>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                let decl = Decl::parse(tokens)?;
+                Some(Statement::Decl(decl))
+            }
+        ]
+    }
+}
+
+enum Decl {
+    QReg(Identifier, Integer),
+    CReg(Identifier, Integer),
+}
+
+impl ASTNode<Token> for Decl {
+    fn parse_impls() -> Vec<fn(&mut Iter<Token>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                Token::parse(tokens, Token::QReg)?;
+                let id = Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::OpenSquare)?;
+                let size = Integer::parse(tokens)?;
+                Token::parse(tokens, Token::CloseSquare)?;
+                Token::parse(tokens, Token::Semicolon)?;
+
+                Some(Decl::QReg(id, size))
+            },
+            |tokens| {
+                Token::parse(tokens, Token::CReg)?;
+                let id = Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::OpenSquare)?;
+                let size = Integer::parse(tokens)?;
+                Token::parse(tokens, Token::CloseSquare)?;
+                Token::parse(tokens, Token::Semicolon)?;
+
+                Some(Decl::CReg(id, size))
+            }
+        ]
+    }
+}
+
+struct Identifier;
+
+impl ASTNodeSimple<Token> for Identifier {
     fn parse_impl(tokens: &mut Iter<Token>) -> Option<Self> {
-        Token::parse(tokens, Token::U)?;
-        Some(Statement::Test)
+        Token::parse(tokens, Token::Identifier)?;
+        Some(Identifier)
     }
 }
 
@@ -134,9 +186,21 @@ impl ASTNodeSimple<Token> for Number {
     }
 }
 
+struct Integer;
+
+impl ASTNodeSimple<Token> for Integer {
+    fn parse_impl(tokens: &mut Iter<Token>) -> Option<Self> {
+        Token::parse(tokens, Token::Int)?;
+        Some(Integer)
+    }
+}
+
 fn main() {
     let file_str = "
-        OPENQASM 2.0; U
+        OPENQASM 2.0;
+
+        qreg r1[10];
+        qreg r2[10];
     ";
 
     let mut lexer = Lexer::new();
@@ -235,6 +299,7 @@ fn main() {
     
     let t_vec: Vec<Token> = tokens.iter().map(|(a, _)| *a).collect();
 
-    let a = MainProgram::parse(&mut t_vec.iter());
-    println!("{:?}", a.is_some());
+    let mut iter = t_vec.iter();
+    let a = MainProgram::parse(&mut iter);
+    println!("{:?}", a.is_some() && iter.next().is_none());
 }
