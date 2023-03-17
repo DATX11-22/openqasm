@@ -59,6 +59,7 @@ impl<Symbol: SymbolT, TokenType: TokenT> SymbolAnalyzer<Symbol, TokenType> {
                 for token_match in token_matches.iter() {
                     if token_match.done() {
                         done_match = Some((token_match.token(), i));
+                        break;
                     }
                 }
 
