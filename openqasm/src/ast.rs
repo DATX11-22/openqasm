@@ -1,8 +1,8 @@
 pub mod ast_debug;
 
-use std::slice::Iter;
-use compiler::ast::ast_node::{ASTNodeSimple, ASTNode};
 use crate::token::{Token, TokenMatch};
+use compiler::ast::ast_node::{ASTNode, ASTNodeSimple};
+use std::slice::Iter;
 
 impl Token {
     fn parse(tokens: &mut Iter<TokenMatch>, token: Token) -> Option<Token> {
@@ -30,7 +30,7 @@ impl ASTNodeSimple<TokenMatch> for MainProgram {
 
 pub enum Program {
     Multiple(Statement, Box<Program>),
-    Sigle(Statement),
+    Single(Statement),
 }
 
 impl ASTNode<TokenMatch> for Program {
@@ -43,7 +43,7 @@ impl ASTNode<TokenMatch> for Program {
             },
             |tokens| {
                 let statement = Statement::parse(tokens)?;
-                Some(Program::Sigle(statement))
+                Some(Program::Single(statement))
             },
         ]
     }
@@ -51,20 +51,37 @@ impl ASTNode<TokenMatch> for Program {
 
 pub enum Statement {
     Decl(Decl),
-    GateDecl,
-    GateDeclEmpty,
+    GateDecl(GateDecl, GopList),
+    GateDeclEmpty(GateDecl),
     // Opaque
-    QOp,
-    If,
+    QOp(QOp),
+    // If,
     // Barrier
 }
 
 impl ASTNode<TokenMatch> for Statement {
     fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
-        vec![|tokens| {
-            let decl = Decl::parse(tokens)?;
-            Some(Statement::Decl(decl))
-        }]
+        vec![
+            |tokens| {
+                let decl = Decl::parse(tokens)?;
+                Some(Statement::Decl(decl))
+            },
+            |tokens| {
+                let gatedecl = GateDecl::parse(tokens)?;
+                let goplist = GopList::parse(tokens)?;
+                Token::parse(tokens, Token::CloseCurly);
+                Some(Statement::GateDecl(gatedecl, goplist))
+            },
+            |tokens| {
+                let gatedecl = GateDecl::parse(tokens)?;
+                Token::parse(tokens, Token::CloseCurly);
+                Some(Statement::GateDeclEmpty(gatedecl))
+            },
+            |tokens| {
+                let qop = QOp::parse(tokens)?;
+                Some(Statement::QOp(qop))
+            },
+        ]
     }
 }
 
@@ -100,6 +117,314 @@ impl ASTNode<TokenMatch> for Decl {
     }
 }
 
+pub enum GateDecl {
+    NoArgList(Identifier, IdList),
+    EmptyArgList(Identifier, IdList),
+    WithArgList(Identifier, IdList, IdList),
+}
+
+impl ASTNode<TokenMatch> for GateDecl {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                Token::parse(tokens, Token::Gate)?;
+                let name = Identifier::parse(tokens)?;
+                let targetlist = IdList::parse(tokens)?;
+                Token::parse(tokens, Token::OpenCurly)?;
+                Some(GateDecl::NoArgList(name, targetlist))
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Gate)?;
+                let name = Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::OpenParen)?;
+                Token::parse(tokens, Token::CloseParen)?;
+                let targetlist = IdList::parse(tokens)?;
+                Token::parse(tokens, Token::OpenCurly)?;
+                Some(GateDecl::EmptyArgList(name, targetlist))
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Gate)?;
+                let name = Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::OpenParen)?;
+                let arglist = IdList::parse(tokens)?;
+                Token::parse(tokens, Token::CloseParen)?;
+                let targetlist = IdList::parse(tokens)?;
+                Token::parse(tokens, Token::OpenCurly)?;
+                Some(GateDecl::WithArgList(name, arglist, targetlist))
+            },
+        ]
+    }
+}
+
+pub enum GopList {
+    UOp(UOp),
+    // Barrier
+    GopList(UOp, Box<GopList>),
+    // GopList barrier
+}
+
+impl ASTNode<TokenMatch> for GopList {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                let uop = UOp::parse(tokens)?;
+                let goplist = Box::new(GopList::parse(tokens)?);
+                Some(GopList::GopList(uop, goplist))
+            },
+            |tokens| {
+                let uop = UOp::parse(tokens)?;
+                Some(GopList::UOp(uop))
+            },
+        ]
+    }
+}
+
+pub enum QOp {
+    UOp(UOp),
+    Measure(Argument, Argument),
+    Reset(Argument),
+}
+
+impl ASTNode<TokenMatch> for QOp {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                let uop = UOp::parse(tokens)?;
+                Some(QOp::UOp(uop))
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Measure)?;
+                let source = Argument::parse(tokens)?;
+                Token::parse(tokens, Token::Arrow)?;
+                let dest = Argument::parse(tokens)?;
+                Token::parse(tokens, Token::Semicolon)?;
+                Some(QOp::Measure(source, dest))
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Reset)?;
+                let target = Argument::parse(tokens)?;
+                Token::parse(tokens, Token::Semicolon)?;
+                Some(QOp::Reset(target))
+            },
+        ]
+    }
+}
+
+pub enum UOp {
+    U(ExpList, Argument),
+    CX(Argument, Argument),
+    NoArgList(Identifier, AnyList),
+    EmptyArgList(Identifier, AnyList),
+    WithArgList(Identifier, ExpList, AnyList),
+}
+
+impl ASTNode<TokenMatch> for UOp {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                Token::parse(tokens, Token::U)?;
+                Token::parse(tokens, Token::OpenParen)?;
+                let arglist = ExpList::parse(tokens)?;
+                Token::parse(tokens, Token::CloseParen)?;
+                let target = Argument::parse(tokens)?;
+                Token::parse(tokens, Token::Semicolon)?;
+                Some(UOp::U(arglist, target))
+            },
+            |tokens| {
+                Token::parse(tokens, Token::CX)?;
+                let target1 = Argument::parse(tokens)?;
+                Token::parse(tokens, Token::Comma)?;
+                let target2 = Argument::parse(tokens)?;
+                Token::parse(tokens, Token::Semicolon)?;
+                Some(UOp::CX(target1, target2))
+            },
+            |tokens| {
+                let name = Identifier::parse(tokens)?;
+                let targets = AnyList::parse(tokens)?;
+                Token::parse(tokens, Token::Semicolon)?;
+                Some(UOp::NoArgList(name, targets))
+            },
+            |tokens| {
+                let name = Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::OpenParen)?;
+                Token::parse(tokens, Token::CloseParen)?;
+                let targets = AnyList::parse(tokens)?;
+                Token::parse(tokens, Token::Semicolon)?;
+                Some(UOp::EmptyArgList(name, targets))
+            },
+            |tokens| {
+                let name = Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::OpenParen)?;
+                let arguments = ExpList::parse(tokens)?;
+                Token::parse(tokens, Token::CloseParen)?;
+                let targets = AnyList::parse(tokens)?;
+                Token::parse(tokens, Token::Semicolon)?;
+                Some(UOp::WithArgList(name, arguments, targets))
+            },
+        ]
+    }
+}
+
+pub enum AnyList {
+    IdList(IdList),
+    MixedList(MixedList),
+}
+
+impl ASTNode<TokenMatch> for AnyList {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                let idlist = IdList::parse(tokens)?;
+                Some(AnyList::IdList(idlist))
+            },
+            |tokens| {
+                let mixedlist = MixedList::parse(tokens)?;
+                Some(AnyList::MixedList(mixedlist))
+            },
+        ]
+    }
+}
+
+pub enum IdList {
+    IdList(Identifier, Box<IdList>),
+    Id(Identifier),
+}
+
+impl ASTNode<TokenMatch> for IdList {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                let id = Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::Comma)?;
+                let idlist = Box::new(IdList::parse(tokens)?);
+                Some(IdList::IdList(id, idlist))
+            },
+            |tokens| {
+                let id = Identifier::parse(tokens)?;
+                Some(IdList::Id(id))
+            },
+        ]
+    }
+}
+
+pub enum MixedList {
+    Indexed(Identifier, Integer),
+    IdMixedList(Identifier, Box<MixedList>),
+    IndexedMixedList(Identifier, Integer, Box<MixedList>),
+    IndexedIdList(Identifier, Integer, IdList),
+}
+
+impl ASTNode<TokenMatch> for MixedList {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                let id = Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::OpenSquare)?;
+                let index = Integer::parse(tokens)?;
+                Token::parse(tokens, Token::CloseSquare)?;
+                Some(MixedList::Indexed(id, index))
+            },
+            |tokens| {
+                let id = Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::Comma)?;
+                let mixedlist = Box::new(MixedList::parse(tokens)?);
+                Some(MixedList::IdMixedList(id, mixedlist))
+            },
+            |tokens| {
+                let id = Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::OpenSquare)?;
+                let index = Integer::parse(tokens)?;
+                Token::parse(tokens, Token::CloseSquare)?;
+                Token::parse(tokens, Token::Comma)?;
+                let mixedlist = Box::new(MixedList::parse(tokens)?);
+                Some(MixedList::IndexedMixedList(id, index, mixedlist))
+            },
+            |tokens| {
+                let id = Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::OpenSquare)?;
+                let index = Integer::parse(tokens)?;
+                Token::parse(tokens, Token::CloseSquare)?;
+                Token::parse(tokens, Token::Comma)?;
+                let idlist = IdList::parse(tokens)?;
+                Some(MixedList::IndexedIdList(id, index, idlist))
+            },
+        ]
+    }
+}
+
+pub enum Argument {
+    Id(Identifier),
+    Indexed(Identifier, Integer),
+}
+
+impl ASTNode<TokenMatch> for Argument {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                let id = Identifier::parse(tokens)?;
+                Some(Argument::Id(id))
+            },
+            |tokens| {
+                let id = Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::OpenSquare)?;
+                let index = Integer::parse(tokens)?;
+                Token::parse(tokens, Token::CloseSquare)?;
+                Some(Argument::Indexed(id, index))
+            },
+        ]
+    }
+}
+
+pub enum ExpList {
+    ExpList(Exp, Box<ExpList>),
+    Exp(Exp),
+}
+
+impl ASTNode<TokenMatch> for ExpList {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                let exp = Exp::parse(tokens)?;
+                let explist = Box::new(ExpList::parse(tokens)?);
+                Some(ExpList::ExpList(exp, explist))
+            },
+            |tokens| {
+                let exp = Exp::parse(tokens)?;
+                Some(ExpList::Exp(exp))
+            },
+        ]
+    }
+}
+
+pub enum Exp {
+    Number(Number),
+    Integer(Integer),
+    // pi, id, +, -, *, /, -, ^, (), unaryop
+}
+
+impl ASTNode<TokenMatch> for Exp {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                let num = Number::parse(tokens)?;
+                Some(Exp::Number(num))
+            },
+            |tokens| {
+                let int = Integer::parse(tokens)?;
+                Some(Exp::Integer(int))
+            },
+        ]
+    }
+}
+
+pub enum UnaryOp {}
+
+impl ASTNode<TokenMatch> for UnaryOp {
+    fn parse_impls() -> Vec<fn(&mut Iter<TokenMatch>) -> Option<Self>> {
+        todo!()
+    }
+}
+
 pub struct Identifier(String);
 
 impl ASTNodeSimple<TokenMatch> for Identifier {
@@ -132,5 +457,3 @@ impl ASTNodeSimple<TokenMatch> for Integer {
         None
     }
 }
-
-

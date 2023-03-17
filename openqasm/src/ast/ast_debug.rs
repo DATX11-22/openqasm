@@ -15,7 +15,7 @@ impl ASTDebug for Program {
     fn chidren(&self) -> Vec<&dyn ASTDebug> {
         match self {
             Program::Multiple(statement, program) => vec![statement, program.as_ref()],
-            Program::Sigle(statement) => vec![statement],
+            Program::Single(statement) => vec![statement],
         }
     }
 
@@ -28,20 +28,18 @@ impl ASTDebug for Statement {
     fn chidren(&self) -> Vec<&dyn ASTDebug> {
         match self {
             Statement::Decl(decl) => vec![decl],
-            Statement::GateDecl => todo!(),
-            Statement::GateDeclEmpty => todo!(),
-            Statement::QOp => todo!(),
-            Statement::If => todo!(),
+            Statement::GateDecl(_, _) => todo!(),
+            Statement::GateDeclEmpty(_) => todo!(),
+            Statement::QOp(_) => todo!(),
         }
     }
 
     fn name(&self) -> String {
         match self {
             Statement::Decl(_) => "Decl".to_string(),
-            Statement::GateDecl => todo!(),
-            Statement::GateDeclEmpty => todo!(),
-            Statement::QOp => todo!(),
-            Statement::If => todo!(),
+            Statement::GateDecl(_, _) => todo!(),
+            Statement::GateDeclEmpty(_) => todo!(),
+            Statement::QOp(_) => todo!(),
         }
     }
 }
