@@ -160,10 +160,10 @@ fn main() {
     lexer.add_rule(Rule::equal_str(Some(Token::Dot), "."));
     lexer.add_rule(Rule::equal_str(Some(Token::OpenParen), "("));
     lexer.add_rule(Rule::equal_str(Some(Token::CloseParen), ")"));
-    lexer.add_rule(Rule::equal_str(Some(Token::OpenSquare), ")"));
-    lexer.add_rule(Rule::equal_str(Some(Token::CloseSquare), ")"));
-    lexer.add_rule(Rule::equal_str(Some(Token::OpenCurly), ")"));
-    lexer.add_rule(Rule::equal_str(Some(Token::CloseCurly), ")"));
+    lexer.add_rule(Rule::equal_str(Some(Token::OpenSquare), "["));
+    lexer.add_rule(Rule::equal_str(Some(Token::CloseSquare), "]"));
+    lexer.add_rule(Rule::equal_str(Some(Token::OpenCurly), "{"));
+    lexer.add_rule(Rule::equal_str(Some(Token::CloseCurly), "}"));
     lexer.add_rule(Rule::equal_str(Some(Token::Arrow), "->"));
     lexer.add_rule(Rule::equal_str(Some(Token::Equal), "=="));
 
@@ -184,7 +184,7 @@ fn main() {
     number_rule.add_state_simple_str(RuleCondition::OneOf("0123456789"), Some(3), true);
     lexer.add_rule(number_rule);
 
-    // // String rule
+    // String rule
     let mut string_rule = Rule::new(Some(Token::Str));
     string_rule.add_state_simple_str(RuleCondition::OneOf("\""), Some(1), false);
     string_rule.add_state(RuleState {
