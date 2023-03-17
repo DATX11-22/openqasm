@@ -1,0 +1,31 @@
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Token {
+    OPENQASM,
+    Include,
+    QReg,
+    CReg,
+    Gate,
+    U,
+    CX,
+    Measure,
+    Reset,
+    If,
+    Barrier,
+    Semicolon,
+    Comma,
+    Dot,
+    OpenParen,
+    CloseParen,
+    OpenSquare,
+    CloseSquare,
+    OpenCurly,
+    CloseCurly,
+    Arrow,
+    Equal,
+    Int,
+    Number,
+    Str,
+    Identifier,
+}
+
+pub type TokenMatch = (Token, String);
