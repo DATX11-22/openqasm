@@ -12,8 +12,22 @@ fn main() {
     let file_str = "
         OPENQASM 2.0;
 
-        qreg r1[10];
-        qreg r2[10];
+        // Gate definitions
+        gate u3(theta,phi,lambda) q { U(theta,phi,lambda) q; }
+        gate u1(lambda) q { U(0,0,lambda) q; }
+        gate cx c,t { CX c,t; }
+        gate id a { U(0,0,0) a; }
+
+        // Registers
+        qreg q[3]; // Comment after code
+        creg c0[1];
+
+        // Operations
+        u3(0.3,0.2,0.1) q[0];
+        cx q[1],q[2];
+
+        // Measure
+        measure q[0] -> c0[0];
     ";
 
     let mut lexer = Lexer::new();
@@ -29,7 +43,10 @@ fn main() {
 
     let mut iter = TokenIter::create(&t_vec);
     let a = MainProgram::parse(&mut iter);
-    if let Some(a) = a {
-        a.print();
+    if iter.next().is_none() && a.is_some() {
+        a.unwrap().print();
+    }
+    else {
+        println!("INCORRECT!!");
     }
 }
