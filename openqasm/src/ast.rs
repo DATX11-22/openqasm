@@ -294,13 +294,13 @@ impl ASTNode<Token> for IdList {
         vec![
             |tokens| {
                 let id = Identifier::parse(tokens)?;
-                Token::parse(tokens, Token::Comma)?;
-                let idlist = Box::new(IdList::parse(tokens)?);
-                Some(IdList::IdList(id, idlist))
+                Some(IdList::Id(id))
             },
             |tokens| {
                 let id = Identifier::parse(tokens)?;
-                Some(IdList::Id(id))
+                Token::parse(tokens, Token::Comma)?;
+                let idlist = Box::new(IdList::parse(tokens)?);
+                Some(IdList::IdList(id, idlist))
             },
         ]
     }
@@ -384,12 +384,13 @@ impl ASTNode<Token> for ExpList {
         vec![
             |tokens| {
                 let exp = Exp::parse(tokens)?;
-                let explist = Box::new(ExpList::parse(tokens)?);
-                Some(ExpList::ExpList(exp, explist))
+                Some(ExpList::Exp(exp))
             },
             |tokens| {
                 let exp = Exp::parse(tokens)?;
-                Some(ExpList::Exp(exp))
+                Token::parse(tokens, Token::Comma)?;
+                let explist = Box::new(ExpList::parse(tokens)?);
+                Some(ExpList::ExpList(exp, explist))
             },
         ]
     }
@@ -398,7 +399,9 @@ impl ASTNode<Token> for ExpList {
 pub enum Exp {
     Number(Number),
     Integer(Integer),
-    // pi, id, +, -, *, /, -, ^, (), unaryop
+    // pi,
+    Identifier(Identifier),
+    //+, -, *, /, -, ^, (), unaryop
 }
 
 impl ASTNode<Token> for Exp {
@@ -411,6 +414,10 @@ impl ASTNode<Token> for Exp {
             |tokens| {
                 let int = Integer::parse(tokens)?;
                 Some(Exp::Integer(int))
+            },
+            |tokens| {
+                let id = Identifier::parse(tokens)?;
+                Some(Exp::Identifier(id))
             },
         ]
     }
