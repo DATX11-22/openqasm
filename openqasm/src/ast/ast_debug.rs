@@ -1,7 +1,8 @@
+use super::{
+    AnyList, Argument, Decl, Exp, ExpList, GateDecl, GopList, IdList, Identifier, Integer,
+    MainProgram, MixedList, Number, Program, QOp, Statement, UOp, UnaryOp,
+};
 use compiler::ast::ast_debug::ASTDebug;
-use crate::ast::{MainProgram, Program, Statement, Decl, Identifier, Number, Integer};
-
-use super::{GateDecl, GopList, QOp, UOp, AnyList, IdList, MixedList, Argument, ExpList, UnaryOp, Exp};
 
 impl ASTDebug for MainProgram {
     fn chidren(&self) -> Vec<&dyn ASTDebug> {
@@ -140,13 +141,14 @@ impl ASTDebug for IdList {
     }
 }
 
-
 impl ASTDebug for MixedList {
     fn chidren(&self) -> Vec<&dyn ASTDebug> {
         match self {
             MixedList::Indexed(id, index) => vec![id, index],
             MixedList::IdMixedList(id, mixedlist) => vec![id, mixedlist.as_ref()],
-            MixedList::IndexedMixedList(id, index, mixedlist) => vec![id, index, mixedlist.as_ref()],
+            MixedList::IndexedMixedList(id, index, mixedlist) => {
+                vec![id, index, mixedlist.as_ref()]
+            }
             MixedList::IndexedIdList(id, index, idlist) => vec![id, index, idlist],
         }
     }
@@ -155,7 +157,6 @@ impl ASTDebug for MixedList {
         Some("Mixedlist".to_string())
     }
 }
-
 
 impl ASTDebug for Argument {
     fn chidren(&self) -> Vec<&dyn ASTDebug> {
@@ -182,7 +183,6 @@ impl ASTDebug for ExpList {
         Some("Explist".to_string())
     }
 }
-
 
 impl ASTDebug for Exp {
     fn chidren(&self) -> Vec<&dyn ASTDebug> {
@@ -229,4 +229,3 @@ impl ASTDebug for Integer {
         Some(format!("Integer: {}", self.0))
     }
 }
-
