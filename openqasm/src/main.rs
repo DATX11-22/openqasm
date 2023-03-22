@@ -7,7 +7,9 @@ use ast::MainProgram;
 use compiler::ast::ast_debug::ASTDebug;
 use compiler::ast::ast_node::{ASTNode, TokenIter};
 use compiler::lexer::Lexer;
+use semantic_analysis::OpenQASMProgram;
 use token::TokenMatch;
+
 
 fn main() {
     let file_str = "
@@ -45,7 +47,26 @@ fn main() {
     let mut iter = TokenIter::create(&t_vec);
     let a = MainProgram::parse(&mut iter);
     if iter.next().is_none() && a.is_some() {
-        a.unwrap().print();
+        let a = a.unwrap();
+        a.print();
+
+        let b = OpenQASMProgram::from_ast(&a).unwrap();
+        println!("QRegs: ");
+        for (n, s) in b.qregs.iter() {
+            println!("  {}: {}", n, s);
+        }
+        println!("CRegs: ");
+        for (n, s) in b.cregs.iter() {
+            println!("  {}: {}", n, s);
+        }
+        println!("GATES: ");
+        for (n, g) in b.gates.iter() {
+            println!("  {}: {}, {}", n, g.num_arguments, g.num_targets);
+        }
+        println!("Operations: ");
+        for op in b.operations.iter() {
+            println!("  {:?}", op);
+        }
     }
     else {
         println!("INCORRECT!!");
