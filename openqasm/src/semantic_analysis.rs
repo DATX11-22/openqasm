@@ -2,18 +2,15 @@ mod ast_to_vec;
 mod misc;
 
 use compiler::ast::ast_node::{ToRefVec, ToVec};
-use std::{
-    cmp::Eq,
-    collections::HashMap,
-    hash::Hash,
-};
+use std::{cmp::Eq, collections::HashMap, hash::Hash};
 
 use crate::ast::{
-    AnyList, Argument, Decl, Exp, GateDecl, GopList, Identifier,
-    MainProgram, QOp, Statement, UOp, UnaryOp::{Sin, Cos, Tan, Exp as Exponent, Ln, Sqrt}, Exp4, Exp3, Exp2, Exp1,
+    AnyList, Argument, Decl, Exp, Exp1, Exp2, Exp3, Exp4, GateDecl, GopList, Identifier,
+    MainProgram, QOp, Statement, UOp,
+    UnaryOp::{Cos, Exp as Exponent, Ln, Sin, Sqrt, Tan},
 };
 
-use self::misc::{arg_id, is_unique, arg_to_id};
+use self::misc::{arg_id, arg_to_id, is_unique};
 
 pub struct OpenQASMProgram {
     pub gates: HashMap<String, Gate>,
@@ -113,7 +110,9 @@ impl OpenQASMProgram {
         let (name, args, targets) = match gatedecl {
             GateDecl::NoArgList(name, targets) => (name, vec![], targets.to_ref_vec()),
             GateDecl::EmptyArgList(name, targets) => (name, vec![], targets.to_ref_vec()),
-            GateDecl::WithArgList(name, args, targets) => (name, args.to_ref_vec(), targets.to_ref_vec()),
+            GateDecl::WithArgList(name, args, targets) => {
+                (name, args.to_ref_vec(), targets.to_ref_vec())
+            }
         };
 
         let mut gate_ops = Vec::new();
@@ -185,16 +184,31 @@ impl OpenQASMProgram {
     fn create_qop(&mut self, qop: &QOp) -> Result<(), SemanticError> {
         match qop {
             QOp::UOp(uop) => self.create_uop(uop)?,
-            QOp::Measure(qbit, cbit) => {
-                // TODO
-                self.operations.push(Operation::Measure(
-                    Qubit("".to_string(), 0),
-                    Cbit("".to_string(), 0),
-                ));
+            QOp::Measure(qubit, cbit) => {
+                let qbits = create_uop_targets(&vec![qubit.clone()], &self.qregs)?;
+                let cbits = create_uop_targets(&vec![cbit.clone()], &self.cregs)?;
+                if qbits.len() != cbits.len() {
+                    return Err(SemanticError::InvalidTargetDimensions);
+                }
+                for (qubit, cbit) in qbits.iter().zip(cbits.iter()) {
+                    let cbit = Cbit(cbit[0].0.clone(), cbit[0].1);
+                    self.operations
+                        .push(Operation::Measure(qubit[0].clone(), cbit));
+                }
             }
             QOp::Reset(bit) => {
-                self.operations
-                    .push(Operation::ResetQ(Qubit("".to_string(), 0)));
+                let qubits = create_uop_targets(&vec![bit.clone()], &self.qregs);
+                if let Ok(qubits) = qubits {
+                    for qubits in qubits {
+                        self.operations.push(Operation::ResetQ(qubits[0].clone()));
+                    }
+                } else {
+                    let cbits = create_uop_targets(&vec![bit.clone()], &self.cregs)?;
+                    for cbits in cbits {
+                        let cbit = Cbit(cbits[0].0.clone(), cbits[0].1);
+                        self.operations.push(Operation::ResetC(cbit));
+                    }
+                }
             }
         }
         Ok(())
@@ -322,11 +336,11 @@ fn create_exp1(exp: &Exp1, exps: &Vec<&Identifier>) -> Result<Box<Expression>, S
                 Ln => Ok(Box::new(move |args| f32::ln(exp(args)))),
                 Sqrt => Ok(Box::new(move |args| f32::sqrt(exp(args)))),
             }
-        },
+        }
         Exp1::Neg(exp) => {
             let exp = create_exp(exp, exps)?;
-            Ok(Box::new(move |args| - exp(args)))
-        },
+            Ok(Box::new(move |args| -exp(args)))
+        }
     }
 }
 
@@ -336,7 +350,7 @@ fn create_exp2(exp: &Exp2, exps: &Vec<&Identifier>) -> Result<Box<Expression>, S
             let lhs = create_exp1(lhs, exps)?;
             let rhs = create_exp2(rhs, exps)?;
             Ok(Box::new(move |args| lhs(args).powf(rhs(args))))
-        },
+        }
         Exp2::Exp1(exp1) => create_exp1(exp1, exps),
     }
 }
@@ -347,12 +361,12 @@ fn create_exp3(exp: &Exp3, exps: &Vec<&Identifier>) -> Result<Box<Expression>, S
             let lhs = create_exp2(lhs, exps)?;
             let rhs = create_exp3(rhs, exps)?;
             Ok(Box::new(move |args| lhs(args) * rhs(args)))
-        },
+        }
         Exp3::Div(lhs, rhs) => {
             let lhs = create_exp2(lhs, exps)?;
             let rhs = create_exp3(rhs, exps)?;
             Ok(Box::new(move |args| lhs(args) / rhs(args)))
-        },
+        }
         Exp3::Exp2(exp2) => create_exp2(exp2, exps),
     }
 }
@@ -363,12 +377,12 @@ fn create_exp4(exp: &Exp4, exps: &Vec<&Identifier>) -> Result<Box<Expression>, S
             let lhs = create_exp3(lhs, exps)?;
             let rhs = create_exp4(rhs, exps)?;
             Ok(Box::new(move |args| lhs(args) + rhs(args)))
-        },
+        }
         Exp4::Sub(lhs, rhs) => {
             let lhs = create_exp3(lhs, exps)?;
             let rhs = create_exp4(rhs, exps)?;
             Ok(Box::new(move |args| lhs(args) - rhs(args)))
-        },
+        }
         Exp4::Exp3(exp3) => create_exp3(exp3, exps),
     }
 }
@@ -406,9 +420,9 @@ fn exp_to_float(exp: &Exp) -> Result<f32, SemanticError> {
 
 fn create_uop_targets(
     targets: &Vec<Argument>,
-    qregs: &HashMap<String, usize>,
+    regs: &HashMap<String, usize>,
 ) -> Result<Vec<Vec<Qubit>>, SemanticError> {
-    if !targets.iter().all(|t| qregs.contains_key(arg_id(t))) {
+    if !targets.iter().all(|t| regs.contains_key(arg_id(t))) {
         return Err(SemanticError::UnknownIdentifier);
     }
 
@@ -416,7 +430,7 @@ fn create_uop_targets(
     let mut arg_len = None;
     for target in targets.iter() {
         if let Argument::Id(id) = target {
-            let target_len = qregs.get(&id.0).unwrap();
+            let target_len = regs.get(&id.0).unwrap();
             if let Some(arg_len) = arg_len {
                 if arg_len != target_len {
                     return Err(SemanticError::InvalidTargetDimensions);
