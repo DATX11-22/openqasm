@@ -58,6 +58,7 @@ pub enum SemanticError {
     IndexedRegisterInGateDecl,
     SameTargetUsedTwice,
     InvalidTargetDimensions,
+    IndexOutOfBounds,
 }
 
 impl OpenQASMProgram {
@@ -422,21 +423,27 @@ fn create_uop_targets(
     targets: &Vec<Argument>,
     regs: &HashMap<String, usize>,
 ) -> Result<Vec<Vec<Qubit>>, SemanticError> {
-    if !targets.iter().all(|t| regs.contains_key(arg_id(t))) {
-        return Err(SemanticError::UnknownIdentifier);
-    }
-
     // Check that all the target registers have the same size
     let mut arg_len = None;
     for target in targets.iter() {
-        if let Argument::Id(id) = target {
-            let target_len = regs.get(&id.0).unwrap();
-            if let Some(arg_len) = arg_len {
-                if arg_len != target_len {
-                    return Err(SemanticError::InvalidTargetDimensions);
+        let target_len = regs
+            .get(arg_id(target))
+            .ok_or(SemanticError::UnknownIdentifier)?;
+
+        match target {
+            Argument::Id(_) => {
+                if let Some(arg_len) = arg_len {
+                    if arg_len != target_len {
+                        return Err(SemanticError::InvalidTargetDimensions);
+                    }
+                } else {
+                    arg_len = Some(target_len);
                 }
-            } else {
-                arg_len = Some(target_len);
+            }
+            Argument::Indexed(_, index) => {
+                if index.0 as usize >= *target_len {
+                    return Err(SemanticError::IndexOutOfBounds);
+                }
             }
         }
     }
