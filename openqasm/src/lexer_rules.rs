@@ -25,6 +25,18 @@ pub fn add_open_qasm_rules(lexer: &mut Lexer<Token>) {
     lexer.add_rule(Rule::equal_str(Some(Token::CloseSquare), "]"));
     lexer.add_rule(Rule::equal_str(Some(Token::OpenCurly), "{"));
     lexer.add_rule(Rule::equal_str(Some(Token::CloseCurly), "}"));
+    lexer.add_rule(Rule::equal_str(Some(Token::Plus), "+"));
+    lexer.add_rule(Rule::equal_str(Some(Token::Minus), "-"));
+    lexer.add_rule(Rule::equal_str(Some(Token::Mul), "*"));
+    lexer.add_rule(Rule::equal_str(Some(Token::Div), "/"));
+    lexer.add_rule(Rule::equal_str(Some(Token::Pow), "^"));
+    lexer.add_rule(Rule::equal_str(Some(Token::Sin), "sin"));
+    lexer.add_rule(Rule::equal_str(Some(Token::Cos), "cos"));
+    lexer.add_rule(Rule::equal_str(Some(Token::Tan), "tan"));
+    lexer.add_rule(Rule::equal_str(Some(Token::Exp), "exp"));
+    lexer.add_rule(Rule::equal_str(Some(Token::Ln), "ln"));
+    lexer.add_rule(Rule::equal_str(Some(Token::Sqrt), "sqrt"));
+    lexer.add_rule(Rule::equal_str(Some(Token::Pi), "pi"));
     lexer.add_rule(Rule::equal_str(Some(Token::Arrow), "->"));
     lexer.add_rule(Rule::equal_str(Some(Token::Equal), "=="));
 

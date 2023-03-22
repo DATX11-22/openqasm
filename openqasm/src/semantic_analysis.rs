@@ -10,7 +10,7 @@ use std::{
 
 use crate::ast::{
     AnyList, Argument, Decl, Exp, GateDecl, GopList, Identifier,
-    MainProgram, QOp, Statement, UOp,
+    MainProgram, QOp, Statement, UOp, UnaryOp::{Sin, Cos, Tan, Exp as Exponent, Ln, Sqrt}, Exp4, Exp3, Exp2, Exp1,
 };
 
 use self::misc::{arg_id, is_unique, arg_to_id};
@@ -292,17 +292,17 @@ fn create_custom_gate_op(
     Ok(GateOperation::Custom(op_name.clone(), op_args, op_targets))
 }
 
-fn create_exp(exp: &Exp, exps: &Vec<&Identifier>) -> Result<Box<Expression>, SemanticError> {
+fn create_exp1(exp: &Exp1, exps: &Vec<&Identifier>) -> Result<Box<Expression>, SemanticError> {
     match exp {
-        Exp::Number(num) => {
+        Exp1::Number(num) => {
             let f = num.0.parse::<f32>().unwrap();
             Ok(Box::new(move |_| f))
         }
-        Exp::Integer(int) => {
+        Exp1::Integer(int) => {
             let i = int.0 as f32;
             Ok(Box::new(move |_| i))
         }
-        Exp::Identifier(id) => {
+        Exp1::Identifier(id) => {
             let search = exps.iter().position(|&arg| arg.0 == id.0);
             if let Some(i) = search {
                 Ok(Box::new(move |args| args[i]))
@@ -310,7 +310,71 @@ fn create_exp(exp: &Exp, exps: &Vec<&Identifier>) -> Result<Box<Expression>, Sem
                 Err(SemanticError::UnknownIdentifier)
             }
         }
+        Exp1::Pi => Ok(Box::new(|_| std::f32::consts::PI)),
+        Exp1::Paren(exp) => create_exp(exp, exps),
+        Exp1::UnaryOp(uop, exp) => {
+            let exp = create_exp(exp, exps)?;
+            match uop {
+                Sin => Ok(Box::new(move |args| f32::sin(exp(args)))),
+                Cos => Ok(Box::new(move |args| f32::cos(exp(args)))),
+                Tan => Ok(Box::new(move |args| f32::tan(exp(args)))),
+                Exponent => Ok(Box::new(move |args| f32::exp(exp(args)))),
+                Ln => Ok(Box::new(move |args| f32::ln(exp(args)))),
+                Sqrt => Ok(Box::new(move |args| f32::sqrt(exp(args)))),
+            }
+        },
+        Exp1::Neg(exp) => {
+            let exp = create_exp(exp, exps)?;
+            Ok(Box::new(move |args| - exp(args)))
+        },
     }
+}
+
+fn create_exp2(exp: &Exp2, exps: &Vec<&Identifier>) -> Result<Box<Expression>, SemanticError> {
+    match exp {
+        Exp2::Pow(lhs, rhs) => {
+            let lhs = create_exp1(lhs, exps)?;
+            let rhs = create_exp2(rhs, exps)?;
+            Ok(Box::new(move |args| lhs(args).powf(rhs(args))))
+        },
+        Exp2::Exp1(exp1) => create_exp1(exp1, exps),
+    }
+}
+
+fn create_exp3(exp: &Exp3, exps: &Vec<&Identifier>) -> Result<Box<Expression>, SemanticError> {
+    match exp {
+        Exp3::Mul(lhs, rhs) => {
+            let lhs = create_exp2(lhs, exps)?;
+            let rhs = create_exp3(rhs, exps)?;
+            Ok(Box::new(move |args| lhs(args) * rhs(args)))
+        },
+        Exp3::Div(lhs, rhs) => {
+            let lhs = create_exp2(lhs, exps)?;
+            let rhs = create_exp3(rhs, exps)?;
+            Ok(Box::new(move |args| lhs(args) / rhs(args)))
+        },
+        Exp3::Exp2(exp2) => create_exp2(exp2, exps),
+    }
+}
+
+fn create_exp4(exp: &Exp4, exps: &Vec<&Identifier>) -> Result<Box<Expression>, SemanticError> {
+    match exp {
+        Exp4::Add(lhs, rhs) => {
+            let lhs = create_exp3(lhs, exps)?;
+            let rhs = create_exp4(rhs, exps)?;
+            Ok(Box::new(move |args| lhs(args) + rhs(args)))
+        },
+        Exp4::Sub(lhs, rhs) => {
+            let lhs = create_exp3(lhs, exps)?;
+            let rhs = create_exp4(rhs, exps)?;
+            Ok(Box::new(move |args| lhs(args) - rhs(args)))
+        },
+        Exp4::Exp3(exp3) => create_exp3(exp3, exps),
+    }
+}
+
+fn create_exp(exp: &Exp, exps: &Vec<&Identifier>) -> Result<Box<Expression>, SemanticError> {
+    create_exp4(exp.0.as_ref(), exps)
 }
 
 fn create_gate_targets(
@@ -336,11 +400,8 @@ fn create_gate_targets(
 }
 
 fn exp_to_float(exp: &Exp) -> Result<f32, SemanticError> {
-    match exp {
-        Exp::Number(num) => Ok(num.0.parse::<f32>().unwrap()),
-        Exp::Integer(int) => Ok(int.0 as f32),
-        Exp::Identifier(_) => Err(SemanticError::UnknownIdentifier),
-    }
+    let exp_fn = create_exp(exp, &vec![])?;
+    Ok(exp_fn(&vec![]))
 }
 
 fn create_uop_targets(

@@ -397,38 +397,189 @@ impl ASTNode<Token> for ExpList {
     }
 }
 
-pub enum Exp {
+pub enum Exp1 {
     Number(Number),
     Integer(Integer),
-    // pi,
+    Pi,
     Identifier(Identifier),
-    //+, -, *, /, -, ^, (), unaryop
+    Paren(Exp),
+    UnaryOp(UnaryOp, Exp),
+    Neg(Exp),
 }
 
-impl ASTNode<Token> for Exp {
+pub enum Exp2 {
+    Pow(Exp1, Box<Exp2>),
+    Exp1(Exp1),
+}
+
+pub enum Exp3 {
+    Mul(Exp2, Box<Exp3>),
+    Div(Exp2, Box<Exp3>),
+    Exp2(Exp2),
+}
+
+pub enum Exp4 {
+    Add(Exp3, Box<Exp4>),
+    Sub(Exp3, Box<Exp4>),
+    Exp3(Exp3),
+}
+
+pub struct Exp(pub Box<Exp4>);
+
+impl ASTNode<Token> for Exp1 {
     fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
         vec![
             |tokens| {
                 let num = Number::parse(tokens)?;
-                Some(Exp::Number(num))
+                Some(Exp1::Number(num))
             },
             |tokens| {
                 let int = Integer::parse(tokens)?;
-                Some(Exp::Integer(int))
+                Some(Exp1::Integer(int))
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Pi)?;
+                Some(Exp1::Pi)
             },
             |tokens| {
                 let id = Identifier::parse(tokens)?;
-                Some(Exp::Identifier(id))
+                Some(Exp1::Identifier(id))
             },
+            |tokens| {
+                Token::parse(tokens, Token::OpenParen)?;
+                let exp = Exp::parse(tokens)?;
+                Token::parse(tokens, Token::CloseParen)?;
+                Some(Exp1::Paren(exp))
+            },
+            |tokens| {
+                let uop = UnaryOp::parse(tokens)?;
+                Token::parse(tokens, Token::OpenParen)?;
+                let exp = Exp::parse(tokens)?;
+                Token::parse(tokens, Token::CloseParen)?;
+                Some(Exp1::UnaryOp(uop, exp))
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Minus)?;
+                let exp = Exp::parse(tokens)?;
+                Some(Exp1::Neg(exp))
+            }
         ]
     }
 }
 
-pub enum UnaryOp {}
+impl ASTNode<Token> for Exp2 {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                let lhs = Exp1::parse(tokens)?;
+                Token::parse(tokens, Token::Pow)?;
+                let rhs = Box::new(Exp2::parse(tokens)?);
+                Some(Exp2::Pow(lhs, rhs))
+            },
+            |tokens| {
+                let exp1 = Exp1::parse(tokens)?;
+                Some(Exp2::Exp1(exp1))
+            }
+        ]
+    }
+}
+
+impl ASTNode<Token> for Exp3 {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                let lhs = Exp2::parse(tokens)?;
+                Token::parse(tokens, Token::Mul)?;
+                let rhs = Box::new(Exp3::parse(tokens)?);
+                Some(Exp3::Mul(lhs, rhs))
+            },
+            |tokens| {
+                let lhs = Exp2::parse(tokens)?;
+                Token::parse(tokens, Token::Div)?;
+                let rhs = Box::new(Exp3::parse(tokens)?);
+                Some(Exp3::Div(lhs, rhs))
+            },
+            |tokens| {
+                let exp2 = Exp2::parse(tokens)?;
+                Some(Exp3::Exp2(exp2))
+            }
+        ]
+    }
+}
+
+impl ASTNode<Token> for Exp4 {
+    fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
+        vec![
+            |tokens| {
+                let lhs = Exp3::parse(tokens)?;
+                Token::parse(tokens, Token::Plus)?;
+                let rhs = Box::new(Exp4::parse(tokens)?);
+                Some(Exp4::Add(lhs, rhs))
+            },
+            |tokens| {
+                let lhs = Exp3::parse(tokens)?;
+                Token::parse(tokens, Token::Minus)?;
+                let rhs = Box::new(Exp4::parse(tokens)?);
+                Some(Exp4::Sub(lhs, rhs))
+            },
+            |tokens| {
+                let exp3 = Exp3::parse(tokens)?;
+                Some(Exp4::Exp3(exp3))
+            }
+        ]
+    }
+}
+
+impl ASTNodeSimple<Token> for Exp {
+    fn parse_impl(tokens: &mut TokenIter<Token>) -> Option<Self> {
+        let exp = Box::new(Exp4::parse(tokens)?);
+        Some(Exp(exp))
+    }
+}
+            // |tokens| {
+            //     Token::parse(tokens, Token::Minus)?;
+            //     let rhs = Box::new(Exp::parse(tokens)?);
+            //     Some(Exp::Neg(rhs))
+            // },
+
+#[derive(Debug)]
+pub enum UnaryOp {
+    Sin,
+    Cos,
+    Tan,
+    Exp,
+    Ln,
+    Sqrt,
+}
 
 impl ASTNode<Token> for UnaryOp {
     fn parse_impls() -> Vec<fn(&mut TokenIter<Token>) -> Option<Self>> {
-        todo!()
+        vec![
+            |tokens| {
+                Token::parse(tokens, Token::Sin)?;
+                Some(UnaryOp::Sin)
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Cos)?;
+                Some(UnaryOp::Cos)
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Tan)?;
+                Some(UnaryOp::Tan)
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Exp)?;
+                Some(UnaryOp::Exp)
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Ln)?;
+                Some(UnaryOp::Ln)
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Sqrt)?;
+                Some(UnaryOp::Sqrt)
+            },
+        ]
     }
 }
 

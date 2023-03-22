@@ -1,6 +1,6 @@
 use super::{
     AnyList, Argument, Decl, Exp, ExpList, GateDecl, GopList, IdList, Identifier, Integer,
-    MainProgram, MixedList, Number, Program, QOp, Statement, UOp, UnaryOp,
+    MainProgram, MixedList, Number, Program, QOp, Statement, UOp, UnaryOp, Exp1, Exp2, Exp3, Exp4,
 };
 use compiler::ast::ast_debug::ASTDebug;
 
@@ -184,19 +184,94 @@ impl ASTDebug for ExpList {
     }
 }
 
-impl ASTDebug for Exp {
+impl ASTDebug for Exp1 {
     fn chidren(&self) -> Vec<&dyn ASTDebug> {
         match self {
-            Exp::Number(num) => vec![num],
-            Exp::Integer(int) => vec![int],
-            Exp::Identifier(id) => vec![id],
+            Exp1::Number(num) => vec![num],
+            Exp1::Integer(int) => vec![int],
+            Exp1::Pi => vec![],
+            Exp1::Identifier(id) => vec![id],
+            Exp1::Paren(exp) => vec![exp],
+            Exp1::UnaryOp(uop, exp) => vec![uop, exp],
+            Exp1::Neg(exp) => vec![exp],
         }
+    }
+
+    fn name(&self) -> Option<String> {
+        match self {
+            Exp1::Pi => Some("pi".to_string()),
+            Exp1::UnaryOp(_, _) => Some("UnaryOP".to_string()),
+            Exp1::Neg(_) => Some("-".to_string()),
+            _ => None,
+        }
+    }
+}
+
+impl ASTDebug for Exp2 {
+    fn chidren(&self) -> Vec<&dyn ASTDebug> {
+        match self {
+            Exp2::Pow(lhs, rhs) => vec![lhs, rhs.as_ref()],
+            Exp2::Exp1(exp1) => vec![exp1],
+        }
+    }
+
+    fn name(&self) -> Option<String> {
+        match self {
+            Exp2::Pow(_, _) => Some("^".to_string()),
+            _ => None,
+        }
+    }
+}
+
+impl ASTDebug for Exp3 {
+    fn chidren(&self) -> Vec<&dyn ASTDebug> {
+        match self {
+            Exp3::Mul(lhs, rhs) => vec![lhs, rhs.as_ref()],
+            Exp3::Div(lhs, rhs) => vec![lhs, rhs.as_ref()],
+            Exp3::Exp2(exp2) => vec![exp2],
+        }
+    }
+
+    fn name(&self) -> Option<String> {
+        match self {
+            Exp3::Mul(_, _) => Some("*".to_string()),
+            Exp3::Div(_, _) => Some("/".to_string()),
+            _ => None,
+        }
+    }
+}
+
+impl ASTDebug for Exp4 {
+    fn chidren(&self) -> Vec<&dyn ASTDebug> {
+        match self {
+            Exp4::Add(lhs, rhs) => vec![lhs, rhs.as_ref()],
+            Exp4::Sub(lhs, rhs) => vec![lhs, rhs.as_ref()],
+            Exp4::Exp3(exp3) => vec![exp3],
+        }
+    }
+
+    fn name(&self) -> Option<String> {
+        match self {
+            Exp4::Add(_, _) => Some("+".to_string()),
+            Exp4::Sub(_, _) => Some("-".to_string()),
+            _ => None,
+        }
+    }
+}
+
+impl ASTDebug for Exp {
+    fn chidren(&self) -> Vec<&dyn ASTDebug> {
+        vec![self.0.as_ref()]
     }
 }
 
 impl ASTDebug for UnaryOp {
     fn chidren(&self) -> Vec<&dyn ASTDebug> {
         vec![]
+    }
+
+    fn name(&self) -> Option<String> {
+        Some(format!("{:?}", self))
     }
 }
 
