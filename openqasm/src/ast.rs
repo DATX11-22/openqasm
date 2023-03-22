@@ -14,7 +14,7 @@ impl Token {
     }
 }
 
-pub struct MainProgram(Number, Program);
+pub struct MainProgram(pub Number, pub Program);
 
 impl ASTNodeSimple<Token> for MainProgram {
     fn parse_impl(tokens: &mut TokenIter<Token>) -> Option<Self> {
@@ -351,6 +351,7 @@ impl ASTNode<Token> for MixedList {
     }
 }
 
+#[derive(Clone)]
 pub enum Argument {
     Id(Identifier),
     Indexed(Identifier, Integer),
@@ -431,7 +432,8 @@ impl ASTNode<Token> for UnaryOp {
     }
 }
 
-pub struct Identifier(String);
+#[derive(Clone)]
+pub struct Identifier(pub String);
 
 impl ASTNodeSimple<Token> for Identifier {
     fn parse_impl(tokens: &mut TokenIter<Token>) -> Option<Self> {
@@ -442,7 +444,7 @@ impl ASTNodeSimple<Token> for Identifier {
     }
 }
 
-pub struct Number(String);
+pub struct Number(pub String);
 
 impl ASTNodeSimple<Token> for Number {
     fn parse_impl(tokens: &mut TokenIter<Token>) -> Option<Self> {
@@ -453,7 +455,8 @@ impl ASTNodeSimple<Token> for Number {
     }
 }
 
-pub struct Integer(u32);
+#[derive(Clone)]
+pub struct Integer(pub u32);
 
 impl ASTNodeSimple<Token> for Integer {
     fn parse_impl(tokens: &mut TokenIter<Token>) -> Option<Self> {

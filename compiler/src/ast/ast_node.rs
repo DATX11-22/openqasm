@@ -75,4 +75,35 @@ pub trait ASTNode<Token: Copy> {
         Self: Sized;
 }
 
+pub trait ToRefVec<T> {
+    fn to_ref_vec(&self) -> Vec<&T> {
+        let mut vec = Vec::new();
+        let mut node = Some(self);
+        while let Some(current) = node {
+            let (next, item) = current.next();
+            node = next;
+            vec.push(item);
+        }
 
+        vec
+    }
+
+    fn next(&self) -> (Option<&Self>, &T);
+}
+
+pub trait ToVec<T> {
+    fn to_vec(&self) -> Vec<T>
+    where Self: Sized {
+        let mut vec = Vec::new();
+        let mut node = Some(self as &dyn ToVec<T>);
+        while let Some(current) = node {
+            let (next, item) = current.next();
+            node = next;
+            vec.push(item);
+        }
+
+        vec
+    }
+
+    fn next(&self) -> (Option<&dyn ToVec<T>>, T);
+}

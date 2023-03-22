@@ -1,6 +1,7 @@
 mod ast;
 mod lexer_rules;
 mod token;
+mod semantic_analysis;
 
 use ast::MainProgram;
 use compiler::ast::ast_debug::ASTDebug;
