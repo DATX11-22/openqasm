@@ -1,19 +1,16 @@
-mod ast_to_vec;
 mod misc;
 
 use compiler::ast::ast_node::{ToRefVec, ToVec};
 use std::{cmp::Eq, collections::HashMap, hash::Hash};
 
 use crate::ast::{
+    ast_to_vec::UOpOrBarrier,
     AnyList, Argument, Decl, Exp, Exp1, Exp2, Exp3, Exp4, GateDecl, GopList, Identifier,
     MainProgram, QOp, Statement, UOp,
     UnaryOp::{Cos, Exp as Exponent, Ln, Sin, Sqrt, Tan},
 };
 
-use self::{
-    ast_to_vec::UOpOrBarrier,
-    misc::{arg_id, arg_to_id, is_unique},
-};
+use self::misc::{arg_id, arg_to_id, is_unique};
 
 pub struct OpenQASMProgram {
     pub gates: HashMap<String, Gate>,
