@@ -1,5 +1,10 @@
 use super::rule::{Rule, SymbolT, TokenT};
 
+#[derive(Debug)]
+pub enum TokenizerError {
+    InvalidToken(usize),
+}
+
 struct RuleMatch<'a, Symbol, Token> {
     rule: &'a Rule<Symbol, Token>,
     state_id: usize,
@@ -44,7 +49,7 @@ impl<Symbol: SymbolT, TokenType: TokenT> SymbolAnalyzer<Symbol, TokenType> {
         self.rules.push(rule);
     }
 
-    pub fn parse(&self, symbols: Vec<Symbol>) -> Vec<(TokenType, Vec<Symbol>)> {
+    pub fn parse(&self, symbols: Vec<Symbol>) -> Result<Vec<(TokenType, Vec<Symbol>)>, TokenizerError> {
         let mut tokens = Vec::new();
 
         let mut i = 0;
@@ -82,8 +87,7 @@ impl<Symbol: SymbolT, TokenType: TokenT> SymbolAnalyzer<Symbol, TokenType> {
                 }
                 i = match_end;
             } else {
-                println!("ERROR!!!!!!!!!!!!!!!!");
-                break;
+                return Err(TokenizerError::InvalidToken(i));
             }
 
             if i >= symbols.len() {
@@ -91,7 +95,7 @@ impl<Symbol: SymbolT, TokenType: TokenT> SymbolAnalyzer<Symbol, TokenType> {
             }
         }
 
-        tokens
+        Ok(tokens)
     }
 }
 
