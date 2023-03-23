@@ -34,12 +34,12 @@ pub enum GateOperation {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct Qubit(String, usize);
+pub struct Qubit(pub String, pub usize);
 #[derive(Clone, Debug)]
-pub struct Cbit(String, usize);
+pub struct Cbit(pub String, pub usize);
 
 #[derive(Debug, Clone)]
-pub struct Condition(String, u32);
+pub struct Condition(pub String, pub u32);
 
 #[derive(Debug)]
 pub enum Operation {
