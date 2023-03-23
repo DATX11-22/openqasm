@@ -147,6 +147,7 @@ impl OpenQASMProgram {
                         op_name,
                         vec![],
                         op_targets,
+                        &targets,
                         &self.gates,
                     )?);
                 }
@@ -156,6 +157,7 @@ impl OpenQASMProgram {
                         op_name,
                         vec![],
                         op_targets,
+                        &targets,
                         &self.gates,
                     )?);
                 }
@@ -165,6 +167,7 @@ impl OpenQASMProgram {
                         op_name,
                         op_args.to_ref_vec(),
                         op_targets,
+                        &targets,
                         &self.gates,
                     )?);
                 }
@@ -280,6 +283,7 @@ fn create_custom_gate_op(
     op_name: &Identifier,
     op_args: Vec<&Exp>,
     op_targets: &AnyList,
+    target_names: &Vec<&Identifier>,
     gates: &HashMap<String, Gate>,
 ) -> Result<GateOperation, SemanticError> {
     let op_name = &op_name.0;
@@ -302,7 +306,7 @@ fn create_custom_gate_op(
 
     let op_args: Result<Vec<_>, _> = op_args.iter().map(|a| create_exp(a, &args)).collect();
     let op_args = op_args?;
-    let op_targets = create_gate_targets(&op_targets, &op_targets)?;
+    let op_targets = create_gate_targets(&op_targets, target_names)?;
 
     Ok(GateOperation::Custom(op_name.clone(), op_args, op_targets))
 }
@@ -399,11 +403,10 @@ fn create_gate_targets(
     let res: Result<Vec<_>, _> = targets
         .iter()
         .map(|target| {
-            let a = gate_targets
+            gate_targets
                 .iter()
                 .position(|t| t.0 == target.0)
-                .ok_or(SemanticError::UnknownIdentifier);
-            a
+                .ok_or(SemanticError::UnknownIdentifier)
         })
         .collect();
     let res = res?;
