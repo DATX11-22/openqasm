@@ -1,6 +1,6 @@
 mod ast;
 mod lexer_rules;
-mod semantic_analysis;
+pub mod semantic_analysis;
 mod token;
 
 use std::fs::read_to_string;
@@ -59,29 +59,9 @@ fn read_file_tokens(
             let other_file_path = &other_file_path[1..other_file_path.len() - 1];
             let other_tokens = read_file_tokens(lexer, Path::new(other_file_path))?;
 
-            tokens.splice(i..i+3, other_tokens);
+            tokens.splice(i..i + 3, other_tokens);
         }
     }
 
     Ok(tokens)
-}
-
-fn main() {
-    let b = parse_openqasm(Path::new("example.qasm")).unwrap();
-    println!("QRegs: ");
-    for (n, s) in b.qregs.iter() {
-        println!("  {}: {}", n, s);
-    }
-    println!("CRegs: ");
-    for (n, s) in b.cregs.iter() {
-        println!("  {}: {}", n, s);
-    }
-    println!("GATES: ");
-    for (n, g) in b.gates.iter() {
-        println!("  {}: {}, {}", n, g.num_arguments, g.num_targets);
-    }
-    println!("Operations: ");
-    for op in b.operations.iter() {
-        println!("  {:?}", op);
-    }
 }
