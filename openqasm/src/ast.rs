@@ -68,12 +68,12 @@ impl ASTNode<Token> for Statement {
             |tokens| {
                 let gatedecl = GateDecl::parse(tokens)?;
                 let goplist = GopList::parse(tokens)?;
-                Token::parse(tokens, Token::CloseCurly);
+                Token::parse(tokens, Token::CloseCurly)?;
                 Some(Statement::GateDecl(gatedecl, goplist))
             },
             |tokens| {
                 let gatedecl = GateDecl::parse(tokens)?;
-                Token::parse(tokens, Token::CloseCurly);
+                Token::parse(tokens, Token::CloseCurly)?;
                 Some(Statement::GateDeclEmpty(gatedecl))
             },
             |tokens| {
