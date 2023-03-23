@@ -52,10 +52,10 @@ pub enum Statement {
     Decl(Decl),
     GateDecl(GateDecl, GopList),
     GateDeclEmpty(GateDecl),
-    // Opaque
+    Opaque,
     QOp(QOp),
-    // If,
-    // Barrier
+    If(Identifier, Integer, QOp),
+    Barrier(AnyList),
 }
 
 impl ASTNode<Token> for Statement {
@@ -77,8 +77,50 @@ impl ASTNode<Token> for Statement {
                 Some(Statement::GateDeclEmpty(gatedecl))
             },
             |tokens| {
+                Token::parse(tokens, Token::Opaque)?;
+                Identifier::parse(tokens)?;
+                IdList::parse(tokens)?;
+                Token::parse(tokens, Token::Semicolon)?;
+                Some(Statement::Opaque)
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Opaque)?;
+                Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::OpenParen)?;
+                Token::parse(tokens, Token::CloseParen)?;
+                IdList::parse(tokens)?;
+                Token::parse(tokens, Token::Semicolon)?;
+                Some(Statement::Opaque)
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Opaque)?;
+                Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::OpenParen)?;
+                IdList::parse(tokens)?;
+                Token::parse(tokens, Token::CloseParen)?;
+                IdList::parse(tokens)?;
+                Token::parse(tokens, Token::Semicolon)?;
+                Some(Statement::Opaque)
+            },
+            |tokens| {
                 let qop = QOp::parse(tokens)?;
                 Some(Statement::QOp(qop))
+            },
+            |tokens| {
+                Token::parse(tokens, Token::If)?;
+                Token::parse(tokens, Token::OpenParen)?;
+                let creg = Identifier::parse(tokens)?;
+                Token::parse(tokens, Token::Equal)?;
+                let int = Integer::parse(tokens)?;
+                Token::parse(tokens, Token::CloseParen)?;
+                let qop = QOp::parse(tokens)?;
+                Some(Statement::If(creg, int, qop))
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Barrier)?;
+                let anylist = AnyList::parse(tokens)?;
+                Token::parse(tokens, Token::Semicolon)?;
+                Some(Statement::Barrier(anylist))
             },
         ]
     }
@@ -157,9 +199,9 @@ impl ASTNode<Token> for GateDecl {
 
 pub enum GopList {
     UOp(UOp),
-    // Barrier
-    GopList(UOp, Box<GopList>),
-    // GopList barrier
+    Barrier(IdList),
+    GopListUOp(UOp, Box<GopList>),
+    GopListBarrier(IdList, Box<GopList>),
 }
 
 impl ASTNode<Token> for GopList {
@@ -167,12 +209,25 @@ impl ASTNode<Token> for GopList {
         vec![
             |tokens| {
                 let uop = UOp::parse(tokens)?;
-                let goplist = Box::new(GopList::parse(tokens)?);
-                Some(GopList::GopList(uop, goplist))
+                Some(GopList::UOp(uop))
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Barrier)?;
+                let idlist = IdList::parse(tokens)?;
+                Token::parse(tokens, Token::Semicolon)?;
+                Some(GopList::Barrier(idlist))
             },
             |tokens| {
                 let uop = UOp::parse(tokens)?;
-                Some(GopList::UOp(uop))
+                let goplist = Box::new(GopList::parse(tokens)?);
+                Some(GopList::GopListUOp(uop, goplist))
+            },
+            |tokens| {
+                Token::parse(tokens, Token::Barrier)?;
+                let idlist = IdList::parse(tokens)?;
+                Token::parse(tokens, Token::Semicolon)?;
+                let goplist = Box::new(GopList::parse(tokens)?);
+                Some(GopList::GopListBarrier(idlist, goplist))
             },
         ]
     }
@@ -209,6 +264,7 @@ impl ASTNode<Token> for QOp {
     }
 }
 
+#[derive(Clone)]
 pub enum UOp {
     U(ExpList, Argument),
     CX(Argument, Argument),
@@ -264,6 +320,7 @@ impl ASTNode<Token> for UOp {
     }
 }
 
+#[derive(Clone)]
 pub enum AnyList {
     IdList(IdList),
     MixedList(MixedList),
@@ -284,6 +341,7 @@ impl ASTNode<Token> for AnyList {
     }
 }
 
+#[derive(Clone)]
 pub enum IdList {
     IdList(Identifier, Box<IdList>),
     Id(Identifier),
@@ -306,6 +364,7 @@ impl ASTNode<Token> for IdList {
     }
 }
 
+#[derive(Clone)]
 pub enum MixedList {
     Indexed(Identifier, Integer),
     IdMixedList(Identifier, Box<MixedList>),
@@ -375,6 +434,7 @@ impl ASTNode<Token> for Argument {
     }
 }
 
+#[derive(Clone)]
 pub enum ExpList {
     ExpList(Exp, Box<ExpList>),
     Exp(Exp),
@@ -397,6 +457,7 @@ impl ASTNode<Token> for ExpList {
     }
 }
 
+#[derive(Clone)]
 pub enum Exp1 {
     Number(Number),
     Integer(Integer),
@@ -407,23 +468,27 @@ pub enum Exp1 {
     Neg(Exp),
 }
 
+#[derive(Clone)]
 pub enum Exp2 {
     Pow(Exp1, Box<Exp2>),
     Exp1(Exp1),
 }
 
+#[derive(Clone)]
 pub enum Exp3 {
     Mul(Exp2, Box<Exp3>),
     Div(Exp2, Box<Exp3>),
     Exp2(Exp2),
 }
 
+#[derive(Clone)]
 pub enum Exp4 {
     Add(Exp3, Box<Exp4>),
     Sub(Exp3, Box<Exp4>),
     Exp3(Exp3),
 }
 
+#[derive(Clone)]
 pub struct Exp(pub Box<Exp4>);
 
 impl ASTNode<Token> for Exp1 {
@@ -462,7 +527,7 @@ impl ASTNode<Token> for Exp1 {
                 Token::parse(tokens, Token::Minus)?;
                 let exp = Exp::parse(tokens)?;
                 Some(Exp1::Neg(exp))
-            }
+            },
         ]
     }
 }
@@ -479,7 +544,7 @@ impl ASTNode<Token> for Exp2 {
             |tokens| {
                 let exp1 = Exp1::parse(tokens)?;
                 Some(Exp2::Exp1(exp1))
-            }
+            },
         ]
     }
 }
@@ -502,7 +567,7 @@ impl ASTNode<Token> for Exp3 {
             |tokens| {
                 let exp2 = Exp2::parse(tokens)?;
                 Some(Exp3::Exp2(exp2))
-            }
+            },
         ]
     }
 }
@@ -525,7 +590,7 @@ impl ASTNode<Token> for Exp4 {
             |tokens| {
                 let exp3 = Exp3::parse(tokens)?;
                 Some(Exp4::Exp3(exp3))
-            }
+            },
         ]
     }
 }
@@ -536,13 +601,13 @@ impl ASTNodeSimple<Token> for Exp {
         Some(Exp(exp))
     }
 }
-            // |tokens| {
-            //     Token::parse(tokens, Token::Minus)?;
-            //     let rhs = Box::new(Exp::parse(tokens)?);
-            //     Some(Exp::Neg(rhs))
-            // },
+// |tokens| {
+//     Token::parse(tokens, Token::Minus)?;
+//     let rhs = Box::new(Exp::parse(tokens)?);
+//     Some(Exp::Neg(rhs))
+// },
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UnaryOp {
     Sin,
     Cos,
@@ -595,6 +660,7 @@ impl ASTNodeSimple<Token> for Identifier {
     }
 }
 
+#[derive(Clone)]
 pub struct Number(pub String);
 
 impl ASTNodeSimple<Token> for Number {

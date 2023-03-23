@@ -10,13 +10,16 @@ use crate::ast::{
     UnaryOp::{Cos, Exp as Exponent, Ln, Sin, Sqrt, Tan},
 };
 
-use self::misc::{arg_id, arg_to_id, is_unique};
+use self::{
+    ast_to_vec::UOpOrBarrier,
+    misc::{arg_id, arg_to_id, is_unique},
+};
 
 pub struct OpenQASMProgram {
     pub gates: HashMap<String, Gate>,
     pub qregs: HashMap<String, usize>,
     pub cregs: HashMap<String, usize>,
-    pub operations: Vec<Operation>,
+    pub operations: Vec<(Option<Condition>, Operation)>,
 }
 
 pub struct Gate {
@@ -37,6 +40,9 @@ pub enum GateOperation {
 pub struct Qubit(String, usize);
 #[derive(Clone, Debug)]
 pub struct Cbit(String, usize);
+
+#[derive(Debug, Clone)]
+pub struct Condition(String, u32);
 
 #[derive(Debug)]
 pub enum Operation {
@@ -59,6 +65,7 @@ pub enum SemanticError {
     SameTargetUsedTwice,
     InvalidTargetDimensions,
     IndexOutOfBounds,
+    OpaqueIsNotSupported,
 }
 
 impl OpenQASMProgram {
@@ -83,9 +90,18 @@ impl OpenQASMProgram {
                 Statement::GateDeclEmpty(gatedecl) => {
                     openqasm_program.create_gate(gatedecl, None)?
                 }
+                Statement::Opaque => return Err(SemanticError::OpaqueIsNotSupported),
                 Statement::QOp(qop) => {
-                    openqasm_program.create_qop(qop)?;
+                    openqasm_program.create_qop(qop, None)?;
                 }
+                Statement::If(id, int, qop) => {
+                    if !openqasm_program.cregs.contains_key(&id.0) {
+                        return Err(SemanticError::UnknownIdentifier);
+                    }
+                    let condition = Some(Condition(id.0.clone(), int.0));
+                    openqasm_program.create_qop(qop, condition)?;
+                }
+                Statement::Barrier(_) => {}
             };
         }
 
@@ -117,10 +133,10 @@ impl OpenQASMProgram {
         };
 
         let mut gate_ops = Vec::new();
-        let goplist = goplist.map_or(vec![], |gl| gl.to_ref_vec());
+        let goplist = goplist.map_or(vec![], |gl| gl.to_vec());
         for gop in goplist {
             match gop {
-                UOp::U(exps, target) => {
+                UOpOrBarrier::UOp(UOp::U(exps, target)) => {
                     let exps = exps.to_ref_vec();
                     if exps.len() != 3 {
                         return Err(SemanticError::WrongNumberOfArguments);
@@ -129,48 +145,49 @@ impl OpenQASMProgram {
                     let exp2 = create_exp(exps[1], &args)?;
                     let exp3 = create_exp(exps[2], &args)?;
 
-                    let target = create_gate_targets(&vec![arg_to_id(target)?], &targets)?;
+                    let target = create_gate_targets(&vec![arg_to_id(&target)?], &targets)?;
 
                     gate_ops.push(GateOperation::U(exp1, exp2, exp3, target[0]));
                 }
-                UOp::CX(target1, target2) => {
+                UOpOrBarrier::UOp(UOp::CX(target1, target2)) => {
                     let op_targets = create_gate_targets(
-                        &vec![arg_to_id(target1)?, arg_to_id(target2)?],
+                        &vec![arg_to_id(&target1)?, arg_to_id(&target2)?],
                         &targets,
                     )?;
 
                     gate_ops.push(GateOperation::CX(op_targets[0], op_targets[1]));
                 }
-                UOp::NoArgList(op_name, op_targets) => {
+                UOpOrBarrier::UOp(UOp::NoArgList(op_name, op_targets)) => {
                     gate_ops.push(create_custom_gate_op(
                         &args,
-                        op_name,
+                        &op_name,
                         vec![],
-                        op_targets,
+                        &op_targets,
                         &targets,
                         &self.gates,
                     )?);
                 }
-                UOp::EmptyArgList(op_name, op_targets) => {
+                UOpOrBarrier::UOp(UOp::EmptyArgList(op_name, op_targets)) => {
                     gate_ops.push(create_custom_gate_op(
                         &args,
-                        op_name,
+                        &op_name,
                         vec![],
-                        op_targets,
+                        &op_targets,
                         &targets,
                         &self.gates,
                     )?);
                 }
-                UOp::WithArgList(op_name, op_args, op_targets) => {
+                UOpOrBarrier::UOp(UOp::WithArgList(op_name, op_args, op_targets)) => {
                     gate_ops.push(create_custom_gate_op(
                         &args,
-                        op_name,
+                        &op_name,
                         op_args.to_ref_vec(),
-                        op_targets,
+                        &op_targets,
                         &targets,
                         &self.gates,
                     )?);
                 }
+                UOpOrBarrier::Barrier(_) => {} // Barriers are ignored (for now atleast)
             }
         }
 
@@ -185,9 +202,9 @@ impl OpenQASMProgram {
         Ok(())
     }
 
-    fn create_qop(&mut self, qop: &QOp) -> Result<(), SemanticError> {
+    fn create_qop(&mut self, qop: &QOp, condition: Option<Condition>) -> Result<(), SemanticError> {
         match qop {
-            QOp::UOp(uop) => self.create_uop(uop)?,
+            QOp::UOp(uop) => self.create_uop(uop, condition)?,
             QOp::Measure(qubit, cbit) => {
                 let qbits = create_uop_targets(&vec![qubit.clone()], &self.qregs)?;
                 let cbits = create_uop_targets(&vec![cbit.clone()], &self.cregs)?;
@@ -196,21 +213,25 @@ impl OpenQASMProgram {
                 }
                 for (qubit, cbit) in qbits.iter().zip(cbits.iter()) {
                     let cbit = Cbit(cbit[0].0.clone(), cbit[0].1);
-                    self.operations
-                        .push(Operation::Measure(qubit[0].clone(), cbit));
+                    self.operations.push((
+                        condition.clone(),
+                        Operation::Measure(qubit[0].clone(), cbit),
+                    ));
                 }
             }
             QOp::Reset(bit) => {
                 let qubits = create_uop_targets(&vec![bit.clone()], &self.qregs);
                 if let Ok(qubits) = qubits {
                     for qubits in qubits {
-                        self.operations.push(Operation::ResetQ(qubits[0].clone()));
+                        self.operations
+                            .push((condition.clone(), Operation::ResetQ(qubits[0].clone())));
                     }
                 } else {
                     let cbits = create_uop_targets(&vec![bit.clone()], &self.cregs)?;
                     for cbits in cbits {
                         let cbit = Cbit(cbits[0].0.clone(), cbits[0].1);
-                        self.operations.push(Operation::ResetC(cbit));
+                        self.operations
+                            .push((condition.clone(), Operation::ResetC(cbit)));
                     }
                 }
             }
@@ -218,7 +239,7 @@ impl OpenQASMProgram {
         Ok(())
     }
 
-    fn create_uop(&mut self, uop: &UOp) -> Result<(), SemanticError> {
+    fn create_uop(&mut self, uop: &UOp, condition: Option<Condition>) -> Result<(), SemanticError> {
         match uop {
             UOp::U(exps, target) => {
                 let exps: Result<Vec<_>, _> =
@@ -230,11 +251,9 @@ impl OpenQASMProgram {
                 let targets = create_uop_targets(&vec![target.clone()], &self.qregs)?;
 
                 for targets in targets.iter() {
-                    self.operations.push(Operation::U(
-                        exps[0],
-                        exps[1],
-                        exps[2],
-                        targets[0].clone(),
+                    self.operations.push((
+                        condition.clone(),
+                        Operation::U(exps[0], exps[1], exps[2], targets[0].clone()),
                     ));
                 }
             }
@@ -243,33 +262,37 @@ impl OpenQASMProgram {
                     create_uop_targets(&vec![target1.clone(), target2.clone()], &self.qregs)?;
 
                 for targets in targets.iter() {
-                    self.operations
-                        .push(Operation::CX(targets[0].clone(), targets[1].clone()));
+                    self.operations.push((
+                        condition.clone(),
+                        Operation::CX(targets[0].clone(), targets[1].clone()),
+                    ));
                 }
             }
             UOp::NoArgList(name, targets) => {
                 let targets = create_uop_targets(&targets.to_vec(), &self.qregs)?;
                 for targets in targets {
-                    self.operations
-                        .push(create_cusom_uop(name, vec![], targets, &self.gates)?);
+                    self.operations.push((
+                        condition.clone(),
+                        create_cusom_uop(name, vec![], targets, &self.gates)?,
+                    ));
                 }
             }
             UOp::EmptyArgList(name, targets) => {
                 let targets = create_uop_targets(&targets.to_vec(), &self.qregs)?;
                 for targets in targets {
-                    self.operations
-                        .push(create_cusom_uop(name, vec![], targets, &self.gates)?);
+                    self.operations.push((
+                        condition.clone(),
+                        create_cusom_uop(name, vec![], targets, &self.gates)?,
+                    ));
                 }
             }
             UOp::WithArgList(name, params, targets) => {
                 let targets = create_uop_targets(&targets.to_vec(), &self.qregs)?;
                 for targets in targets {
-                    self.operations.push(create_cusom_uop(
-                        name,
-                        params.to_ref_vec(),
-                        targets,
-                        &self.gates,
-                    )?);
+                    self.operations.push((
+                        condition.clone(),
+                        create_cusom_uop(name, params.to_ref_vec(), targets, &self.gates)?,
+                    ));
                 }
             }
         }

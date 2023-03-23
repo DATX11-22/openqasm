@@ -14,15 +14,6 @@ impl ToRefVec<Statement> for Program {
     }
 }
 
-impl ToRefVec<UOp> for GopList {
-    fn next(&self) -> (Option<&Self>, &UOp) {
-        match self {
-            GopList::UOp(uop) => (None, uop),
-            GopList::GopList(uop, next) => (Some(next), uop),
-        }
-    }
-}
-
 impl ToRefVec<Identifier> for IdList {
     fn next(&self) -> (Option<&Self>, &Identifier) {
         match self {
@@ -37,6 +28,27 @@ impl ToRefVec<Exp> for ExpList {
         match self {
             ExpList::ExpList(exp, next) => (Some(next), exp),
             ExpList::Exp(exp) => (None, exp),
+        }
+    }
+}
+
+pub enum UOpOrBarrier {
+    UOp(UOp),
+    Barrier(IdList),
+}
+
+impl ToVec<UOpOrBarrier> for GopList {
+    fn next(&self) -> (Option<&dyn ToVec<UOpOrBarrier>>, UOpOrBarrier) {
+        match self {
+            GopList::UOp(uop) => (None, UOpOrBarrier::UOp(uop.clone())),
+            GopList::Barrier(idlist) => (None, UOpOrBarrier::Barrier(idlist.clone())),
+            GopList::GopListUOp(uop, goplist) => {
+                (Some(goplist.as_ref()), UOpOrBarrier::UOp(uop.clone()))
+            }
+            GopList::GopListBarrier(idlist, goplist) => (
+                Some(goplist.as_ref()),
+                UOpOrBarrier::Barrier(idlist.clone()),
+            ),
         }
     }
 }

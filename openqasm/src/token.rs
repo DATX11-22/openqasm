@@ -5,6 +5,7 @@ pub enum Token {
     QReg,
     CReg,
     Gate,
+    Opaque,
     U,
     CX,
     Measure,

@@ -29,7 +29,10 @@ impl ASTDebug for Statement {
             Statement::Decl(decl) => vec![decl],
             Statement::GateDecl(gatedecl, goplist) => vec![gatedecl, goplist],
             Statement::GateDeclEmpty(gatedecl) => vec![gatedecl],
+            Statement::Opaque => vec![],
             Statement::QOp(qop) => vec![qop],
+            Statement::If(id, int, qop) => vec![id, int, qop],
+            Statement::Barrier(anylist) => vec![anylist],
         }
     }
 
@@ -72,7 +75,9 @@ impl ASTDebug for GopList {
     fn chidren(&self) -> Vec<&dyn ASTDebug> {
         match self {
             GopList::UOp(uop) => vec![uop],
-            GopList::GopList(uop, goplist) => vec![uop, goplist.as_ref()],
+            GopList::Barrier(ids) => vec![ids],
+            GopList::GopListUOp(uop, goplist) => vec![uop, goplist.as_ref()],
+            GopList::GopListBarrier(ids, goplist) => vec![ids, goplist.as_ref()],
         }
     }
 
