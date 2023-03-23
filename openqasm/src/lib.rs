@@ -55,9 +55,13 @@ fn read_file_tokens(
             && tokens[i + 1].0 == Token::Str
             && tokens[i + 2].0 == Token::Semicolon
         {
-            let other_file_path = tokens[i + 1].1.clone().into_iter().collect::<String>();
-            let other_file_path = &other_file_path[1..other_file_path.len() - 1];
-            let other_tokens = read_file_tokens(lexer, Path::new(other_file_path))?;
+            let file_dir = file_path.parent().ok_or(OpenQASMError::FileError)?;
+
+            let other_file_path_str = tokens[i + 1].1.clone().into_iter().collect::<String>();
+            let other_file_path_str = &other_file_path_str[1..other_file_path_str.len() - 1];
+            let other_file_path = file_dir.join(Path::new(other_file_path_str));
+
+            let other_tokens = read_file_tokens(lexer, &other_file_path)?;
 
             tokens.splice(i..i + 3, other_tokens);
         }
