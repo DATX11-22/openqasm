@@ -4,7 +4,7 @@ use crate::openqasm::{
     parse_openqasm,
     semantic_analysis::{GateOperation, Operation},
 };
-use openqasm_parser::openqasm;
+use openqasm_parser::openqasm::{self, BasicOp};
 
 fn main() {
     let example_dir = Path::new(file!()).parent().unwrap();
@@ -58,4 +58,23 @@ fn main() {
             Operation::ResetC(c) => println!("reset {}[{}]", c.0, c.1),
         }
     }
+    println!("Basic operations:");
+    for (cond, operation) in program.get_basic_operations().iter() {
+        print!("    ");
+
+        if let Some(cond) = cond {
+            print!("if({} == {}) ", cond.0, cond.1);
+        }
+
+        match operation {
+            BasicOp::U(p1, p2, p3, qbit) => {
+                println!("U({},{},{}) {}[{}]", p1, p2, p3, qbit.0, qbit.1)
+            }
+            BasicOp::CX(q1, q2) => println!("CX {}[{}], {}[{}]", q1.0, q1.1, q2.0, q2.1),
+            BasicOp::Measure(q, c) => println!("measure {}[{}] -> {}[{}]", q.0, q.1, c.0, c.1),
+            BasicOp::ResetQ(q) => println!("reset {}[{}]", q.0, q.1),
+            BasicOp::ResetC(c) => println!("reset {}[{}]", c.0, c.1),
+        }
+    }
+
 }
