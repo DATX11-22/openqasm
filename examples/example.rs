@@ -1,9 +1,10 @@
 use std::path::Path;
 
-use openqasm::openqasm::{
+use crate::openqasm::{
     parse_openqasm,
     semantic_analysis::{GateOperation, Operation},
 };
+use openqasm_parser::openqasm;
 
 fn main() {
     let example_dir = Path::new(file!()).parent().unwrap();
