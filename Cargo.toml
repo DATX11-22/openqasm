@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 description = "A parser for openqasm2"
 license = "MIT"
+repository = "https://github.com/DATX11-22/openqasm"
 
 [dependencies]
