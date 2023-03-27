@@ -1,9 +1,9 @@
 mod misc;
 
-use compiler::ast::ast_node::{ToRefVec, ToVec};
+use crate::parser::ast::ast_node::{ToRefVec, ToVec};
 use std::{cmp::Eq, collections::HashMap, hash::Hash};
 
-use crate::ast::{
+use crate::openqasm::ast::{
     ast_to_vec::UOpOrBarrier,
     AnyList, Argument, Decl, Exp, Exp1, Exp2, Exp3, Exp4, GateDecl, GopList, Identifier,
     MainProgram, QOp, Statement, UOp,

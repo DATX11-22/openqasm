@@ -1,6 +1,6 @@
-use compiler::ast::ast_node::{ToRefVec, ToVec};
+use crate::parser::ast::ast_node::{ToRefVec, ToVec};
 
-use crate::ast::{
+use crate::openqasm::ast::{
     AnyList, Argument, Exp, ExpList, GopList, IdList, Identifier, MixedList, Program, Statement,
     UOp,
 };

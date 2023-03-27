@@ -6,13 +6,13 @@ mod token;
 use std::fs::read_to_string;
 use std::path::Path;
 
+use crate::parser::ast::parse;
+use crate::parser::lexer::Lexer;
 use ast::MainProgram;
-use compiler::ast::parse;
-use compiler::lexer::Lexer;
 use semantic_analysis::{OpenQASMProgram, SemanticError};
 use token::TokenMatch;
 
-use crate::token::Token;
+use crate::openqasm::token::Token;
 
 #[derive(Debug)]
 pub enum OpenQASMError {

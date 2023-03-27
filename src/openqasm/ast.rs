@@ -1,8 +1,8 @@
 pub mod ast_debug;
 pub mod ast_to_vec;
 
-use crate::token::Token;
-use compiler::ast::ast_node::{ASTNode, ASTNodeSimple, TokenIter};
+use crate::openqasm::token::Token;
+use crate::parser::ast::ast_node::{ASTNode, ASTNodeSimple, TokenIter};
 
 impl Token {
     fn parse(tokens: &mut TokenIter<Token>, token: Token) -> Option<Token> {

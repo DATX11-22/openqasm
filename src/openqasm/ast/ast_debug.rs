@@ -2,7 +2,7 @@ use super::{
     AnyList, Argument, Decl, Exp, ExpList, GateDecl, GopList, IdList, Identifier, Integer,
     MainProgram, MixedList, Number, Program, QOp, Statement, UOp, UnaryOp, Exp1, Exp2, Exp3, Exp4,
 };
-use compiler::ast::ast_debug::ASTDebug;
+use crate::parser::ast::ast_debug::ASTDebug;
 
 impl ASTDebug for MainProgram {
     fn chidren(&self) -> Vec<&dyn ASTDebug> {

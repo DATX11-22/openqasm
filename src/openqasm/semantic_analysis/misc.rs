@@ -1,6 +1,6 @@
 use std::{collections::HashSet, hash::Hash, cmp::Eq};
 use super::SemanticError;
-use crate::ast::{Argument, Identifier};
+use crate::openqasm::ast::{Argument, Identifier};
 
 pub fn arg_id(arg: &Argument) -> &String {
     match arg {

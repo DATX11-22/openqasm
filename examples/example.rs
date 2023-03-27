@@ -1,8 +1,9 @@
-use openqasm::{
+use std::path::Path;
+
+use openqasm::openqasm::{
     parse_openqasm,
     semantic_analysis::{GateOperation, Operation},
 };
-use std::path::Path;
 
 fn main() {
     let example_dir = Path::new(file!()).parent().unwrap();
@@ -46,7 +47,9 @@ fn main() {
         }
 
         match operation {
-            Operation::U(p1, p2, p3, qbit) => println!("U({},{},{}) {}[{}]", p1,p2,p3,qbit.0,qbit.1),
+            Operation::U(p1, p2, p3, qbit) => {
+                println!("U({},{},{}) {}[{}]", p1, p2, p3, qbit.0, qbit.1)
+            }
             Operation::CX(q1, q2) => println!("CX {}[{}], {}[{}]", q1.0, q1.1, q2.0, q2.1),
             Operation::Custom(name, ps, qs) => println!("{}({:?}) {:?}", name, ps, qs),
             Operation::Measure(q, c) => println!("measure {}[{}] -> {}[{}]", q.0, q.1, c.0, c.1),

@@ -1,5 +1,5 @@
-use compiler::lexer::{Lexer, rule::{Rule, RuleCondition, RuleState, RuleStateTransition}};
-use crate::token::Token;
+use crate::parser::lexer::{Lexer, rule::{Rule, RuleCondition, RuleState, RuleStateTransition}};
+use crate::openqasm::token::Token;
 
 pub fn add_open_qasm_rules(lexer: &mut Lexer<Token>) {
     // Keyword rules
