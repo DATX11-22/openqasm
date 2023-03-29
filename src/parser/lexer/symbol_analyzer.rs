@@ -1,10 +1,15 @@
+//! Code for a generic tokenizer which can tokenize a sequence of symbols to
+//! a sequence of tokens.
+
 use super::rule::{Rule, SymbolT, TokenT};
 
+/// The error returned when an invalid token is found.
 #[derive(Debug)]
 pub enum TokenizerError {
     InvalidToken(usize),
 }
 
+/// Represents a match following a certin [Rule].
 struct RuleMatch<'a, Symbol, Token> {
     rule: &'a Rule<Symbol, Token>,
     state_id: usize,
@@ -23,6 +28,8 @@ impl<'a, Symbol: SymbolT, Token: TokenT> RuleMatch<'a, Symbol, Token> {
         self.rule.done(self.state_id)
     }
 
+    /// Given the next symbol in the sequence returns a new updated match if
+    /// the symbol followed some valid transition in the previous match.
     pub fn next(&self, c: Symbol) -> Option<RuleMatch<'a, Symbol, Token>> {
         if let Some(next_state) = self.rule.next_state(self.state_id, c) {
             return Some(RuleMatch {
@@ -35,6 +42,8 @@ impl<'a, Symbol: SymbolT, Token: TokenT> RuleMatch<'a, Symbol, Token> {
     }
 }
 
+/// A tokenizer which can take a sequence of symbols and converts them into a
+/// sequence of tokens using some rules.
 pub struct SymbolAnalyzer<Symbol, TokenType> {
     rules: Vec<Rule<Symbol, TokenType>>,
 }
@@ -44,11 +53,14 @@ impl<Symbol: SymbolT, TokenType: TokenT> SymbolAnalyzer<Symbol, TokenType> {
         Self { rules: Vec::new() }
     }
 
+    /// Add a new rule which will be used to tokenize.
     pub fn add_rule(&mut self, rule: Rule<Symbol, TokenType>) {
         // TODO: Validate rule
         self.rules.push(rule);
     }
 
+    /// The function used for tokenizing a sequence of symbols. For each valid token found
+    /// the sequence of symbols matched is also returned.
     pub fn parse(&self, symbols: Vec<Symbol>) -> Result<Vec<(TokenType, Vec<Symbol>)>, TokenizerError> {
         let mut tokens = Vec::new();
 

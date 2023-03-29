@@ -1,3 +1,7 @@
+//! The code required for parsing an AST from a sequence of Tokens.
+//! Each type of of node implements [ASTNode](crate::parser::ast::ast_node::ASTNode).
+//! These implementations follow the grammar specified in the openqasm 2.0 specification.
+
 pub mod ast_debug;
 pub mod ast_to_vec;
 

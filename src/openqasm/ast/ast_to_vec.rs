@@ -1,9 +1,12 @@
-use crate::parser::ast::ast_node::{ToRefVec, ToVec};
+//! Contains implementations of [ToVec](crate::parser::ast::ast_node::ToVec) and [ToRefVec](crate::parser::ast::ast_node::ToRefVec) for some of
+//! the AST nodes which describe a list like structure. This makes it easier to handle the nodes when
+//! performing semantic analysis.
 
 use crate::openqasm::ast::{
     AnyList, Argument, Exp, ExpList, GopList, IdList, Identifier, MixedList, Program, Statement,
     UOp,
 };
+use crate::parser::ast::ast_node::{ToRefVec, ToVec};
 
 impl ToRefVec<Statement> for Program {
     fn next(&self) -> (Option<&Self>, &Statement) {
@@ -37,6 +40,9 @@ pub enum UOpOrBarrier {
     Barrier(IdList),
 }
 
+/// Some AST nodes can not implement [ToRefVec] since they need to create a list of
+/// some other datatype than what they contain. This requires cloning and is therefore
+/// not optimal for performance. ToRefVec should therefore be prefered when possible.
 impl ToVec<UOpOrBarrier> for GopList {
     fn next(&self) -> (Option<&dyn ToVec<UOpOrBarrier>>, UOpOrBarrier) {
         match self {

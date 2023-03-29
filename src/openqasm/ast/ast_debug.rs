@@ -1,6 +1,9 @@
+//! Contains [ASTDebug](crate::parser::ast::ast_debug::ASTDebug) implementations for all the AST nodes.
+//! Using these implementations it is possible to visualize the AST.
+
 use super::{
-    AnyList, Argument, Decl, Exp, ExpList, GateDecl, GopList, IdList, Identifier, Integer,
-    MainProgram, MixedList, Number, Program, QOp, Statement, UOp, UnaryOp, Exp1, Exp2, Exp3, Exp4,
+    AnyList, Argument, Decl, Exp, Exp1, Exp2, Exp3, Exp4, ExpList, GateDecl, GopList, IdList,
+    Identifier, Integer, MainProgram, MixedList, Number, Program, QOp, Statement, UOp, UnaryOp,
 };
 use crate::parser::ast::ast_debug::ASTDebug;
 

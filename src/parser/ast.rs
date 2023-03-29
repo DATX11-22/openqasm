@@ -1,13 +1,17 @@
+//! Code for converting a list of tokens into an AST.
+
 use self::ast_node::{ASTNode, TokenIter};
 
 pub mod ast_debug;
 pub mod ast_node;
 
+/// The error type returned when parsing an AST.
 #[derive(Debug)]
 pub enum ParseError {
     SyntaxError,
 }
 
+/// The function used to parse an AST from a list of tokens.
 pub fn parse<RootToken: ASTNode<Token>, Token: Copy>(
     tokens: &Vec<(Token, String)>,
 ) -> Result<RootToken, ParseError> {
