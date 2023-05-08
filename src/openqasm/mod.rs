@@ -57,12 +57,12 @@ pub fn parse_openqasm(file_path: &Path) -> Result<OpenQASMProgram, OpenQASMError
 
     let t_vec: Vec<TokenMatch> = tokens
         .iter()
-        .map(|(a, s)| (*a, s.into_iter().collect::<String>()))
+        .map(|(a, s)| (*a, s.iter().collect::<String>()))
         .collect();
 
     let ast = parse::<MainProgram, Token>(&t_vec).map_err(|_| OpenQASMError::SyntaxError)?;
 
-    OpenQASMProgram::from_ast(&ast).map_err(|e| OpenQASMError::SemanticError(e))
+    OpenQASMProgram::from_ast(&ast).map_err(OpenQASMError::SemanticError)
 }
 
 /// Reads a file and converts it into tokens. If the file contains include statements
@@ -85,7 +85,7 @@ fn read_file_tokens(
     // Check for include statements and splice in the tokens from the other file
     for i in 0..tokens.len() {
         if i + 2 < tokens.len()
-            && tokens[i + 0].0 == Token::Include
+            && tokens[i].0 == Token::Include
             && tokens[i + 1].0 == Token::Str
             && tokens[i + 2].0 == Token::Semicolon
         {

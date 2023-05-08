@@ -15,7 +15,7 @@ pub enum ParseError {
 pub fn parse<RootToken: ASTNode<Token>, Token: Copy>(
     tokens: &Vec<(Token, String)>,
 ) -> Result<RootToken, ParseError> {
-    let mut iter = TokenIter::create(&tokens);
+    let mut iter = TokenIter::create(tokens);
 
     // Parse the AST starting from the root token, return error if unsuccessful.
     // iter is updated to the last position where parsing was unsuccessful.

@@ -417,7 +417,7 @@ fn create_custom_gate_op(
         return Err(SemanticError::UnknownIdentifier);
     }
 
-    let op_params: Result<Vec<_>, _> = op_params.iter().map(|a| create_exp(a, &params)).collect();
+    let op_params: Result<Vec<_>, _> = op_params.iter().map(|a| create_exp(a, params)).collect();
     let op_params = op_params?;
     let op_targets = create_gate_targets(&op_targets, target_names)?;
 
